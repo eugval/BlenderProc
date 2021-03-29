@@ -7,6 +7,10 @@ import subprocess
 import shutil
 import signal
 import sys
+
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
 from sys import platform, version_info
 if version_info.major == 3:
     from urllib.request import urlretrieve
