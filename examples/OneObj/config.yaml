@@ -1,4 +1,4 @@
-# Args: <path_to_bop_data> <bop_datset_name> <bop_toolkit_path> <path_to_cc_textures> <output_dir>
+# Args: <path_to_shapenet_data> <path_to_cc_textures> <output_dir>
 {
   "version": 3,
   "setup": {
@@ -10,6 +10,7 @@
       "scipy==1.2.2",
       "matplotlib==2.2.4",
       "pydevd-pycharm~=193.6911.25",
+      "matplotlib",
     ]
   },
   "modules": [
@@ -17,102 +18,63 @@
       "module": "main.Initializer",
       "config": {
         "global": {
-          "output_dir": "<args:4>",
-          "sys_paths": ["<args:2>"]
+          "output_dir": "<args:0>",
+          "run_number":0
+         # "sys_paths": ["<args:2>"]
         }
       }
     },
     {
-      "module": "loader.BopLoader",
-      "config": {
-        "bop_dataset_path": "<args:0>/tless",
-        "model_type": "cad",
-        "mm2m": True,
-        "sample_objects": True,
-        "num_of_objs_to_sample": 3,
-        "add_properties": {
-          "cp_physics": True
-        }
-      }
+      "module": "writer.FolderStructureWriter",
     },
+
     {
-      "module": "loader.BopLoader",
+      "module": "loader.ShapeNetLoader",
       "config": {
-        "bop_dataset_path": "<args:0>/lm",
-        "model_type": "",
-        "mm2m": True,
-        "sample_objects": True,
-        "num_of_objs_to_sample": 3,
+        "data_path": "<args:1>",
+        "used_synset_id": "03797390",
+        "used_source_id": "",
         "add_properties": {
-          "cp_physics": True
+          "cp_physics": True,
+          "cp_shapenet":True,
+          "cp_background":"False"
         },
         "cf_set_shading": "SMOOTH"
       }
     },
-    {
-      "module": "loader.BopLoader",
-      "config": {
-        "bop_dataset_path": "<args:0>/<args:1>",
-        "model_type": "",
-        "mm2m": True,
-        "sample_objects": True,
-        "num_of_objs_to_sample": 10,
-        "add_properties": {
-          "cp_physics": True
-        },
-        "cf_set_shading": "SMOOTH"
-      }
-    },
-    {
-      "module": "manipulators.MaterialManipulator",
-      "config": {
-        "selector": {
-          "provider": "getter.Material",
-          "conditions": [
-          {
-            "name": "bop_tless_vertex_col_material.*"
-          }
-          ]
-        },
-        "cf_set_base_color": {
-          "provider": "sampler.Color",
-          "grey": True,
-          "min": [0.25, 0.25, 0.25, 1],
-          "max": [1, 1, 1, 1]
-        }
-      }
-    },
-    {
-      "module": "manipulators.MaterialManipulator",
-      "config": {
-        "selector": {
-          "provider": "getter.Material",
-          "conditions": [
-          {
-            "name": "bop_tless_vertex_col_material.*"
-          },
-          {
-            "name": "bop_lm_vertex_col_material.*"
-          },
-          {
-            "name": "bop_<args:1>_vertex_col_material.*"
-          }
-          ]
-        },
-        "cf_set_specular": {
-          "provider": "sampler.Value",
-          "type": "float",
-          "min": 0.0,
-          "max": 1.0
-        },
-        "cf_set_roughness": {
-          "provider": "sampler.Value",
-          "type": "float",
-          "min": 0.0,
-          "max": 1.0
-        }
-      }
-    },
+
+#    {
+#      "module": "loader.CCMaterialLoader",
+#      "config": {
+#        "folder_path": "<args:2>",
+#        "preload": True
+#      }
+#    },
+#    {
+#      "module": "manipulators.EntityManipulator",
+#      "config": {
+#        "selector": {
+#          "provider": "getter.Entity",
+#          "conditions": {
+#            "type": "MESH"
+#          }
+#        },
+#        "cf_add_uv_mapping":{
+#                "projection":"cube",
+#                "forced_recalc_of_uv_maps": True
+#        },
+#        "cf_randomize_materials": {
+#          "randomization_level": 1,
+#          "materials_to_replace_with": {
+#            "provider": "getter.Material",
+#            "random_samples": 1,
+#            "conditions": {
+#              "cp_is_cc_texture": True  # this will return one random loaded cc textures
+#            }
+#          }
+#        },
+#      }
+#    },
     {
       "module": "constructor.BasicMeshInitializer",
       "config": {
@@ -120,41 +82,45 @@
         {
           "type": "plane",
           "name": "ground_plane0",
-          "scale": [2, 2, 1]
+          "scale": [2, 2, 1],
         },
         {
           "type": "plane",
           "name": "ground_plane1",
           "scale": [2, 2, 1],
           "location": [0, -2, 2],
-          "rotation": [-1.570796, 0, 0] # switch the sign to turn the normals to the outside
+          "rotation": [-1.570796, 0, 0], # switch the sign to turn the normals to the outside
+
         },
         {
           "type": "plane",
           "name": "ground_plane2",
           "scale": [2, 2, 1],
           "location": [0, 2, 2],
-          "rotation": [1.570796, 0, 0]
+          "rotation": [1.570796, 0, 0],
+
         },
         {
           "type": "plane",
           "name": "ground_plane4",
           "scale": [2, 2, 1],
           "location": [2, 0, 2],
-          "rotation": [0, -1.570796, 0]
+          "rotation": [0, -1.570796, 0],
+
         },
         {
           "type": "plane",
           "name": "ground_plane5",
           "scale": [2, 2, 1],
           "location": [-2, 0, 2],
-          "rotation": [0, 1.570796, 0]
+          "rotation": [0, 1.570796, 0],
+
         },
         {
           "type": "plane",
           "name": "light_plane",
           "location": [0, 0, 10],
-          "scale": [3, 3, 1]
+          "scale": [3, 3, 1],
         }
         ]
       }
@@ -170,6 +136,8 @@
         },
         "cp_physics": False,
         "cp_category_id": 333
+        "cp_shapenet":False,
+        "cp_background":"True"
       }
     },
     {
@@ -196,34 +164,28 @@
         }
       }
     },
-    {
-      "module": "loader.CCMaterialLoader",
-      "config": {
-        "folder_path": "<args:3>"
-      }
-    },
-    {
-      "module": "manipulators.EntityManipulator",
-      "config": {
-        "selector": {
-          "provider": "getter.Entity",
-          "conditions": {
-            "name": "ground_plane.*"
-          }
-        },
-        "mode": "once_for_all",
-        "cf_randomize_materials": {
-          "randomization_level": 1,
-          "materials_to_replace_with": {
-            "provider": "getter.Material",
-            "random_samples": 1,
-            "conditions": {
-              "cp_is_cc_texture": True
-            }
-          }
-        }
-      }
-    },
+#    {
+#      "module": "manipulators.EntityManipulator",
+#      "config": {
+#        "selector": {
+#          "provider": "getter.Entity",
+#          "conditions": {
+#            "name": "ground_plane.*"
+#          }
+#        },
+#        "mode": "once_for_each",
+#        "cf_randomize_materials": {
+#          "randomization_level": 1,
+#          "materials_to_replace_with": {
+#            "provider": "getter.Material",
+#            "random_samples": 1,
+#            "conditions": {
+#              "cp_is_cc_texture": True
+#            }
+#          }
+#        }
+#      }
+#    },
     {
       "module": "object.OnSurfaceSampler",
       "config": {
@@ -263,6 +225,15 @@
         }
       }
     },
+
+#    {
+#      "module": "loader.CCMaterialLoader",
+#      "config": {
+#        "folder_path": "<args:2>",
+#        "fill_used_empty_materials": True
+#      }
+#    },
+
     {
       "module": "lighting.LightSampler",
       "config": {
@@ -294,7 +265,7 @@
         "cam_poses": [
         {
           "proximity_checks": {
-            "min": 0.3
+            "min": 0.2
           },
           "excluded_objs_in_proximity_check":  {
             "provider": "getter.Entity",
@@ -303,13 +274,13 @@
               "type": "MESH"
             }
           },
-          "number_of_samples": 10,
+          "number_of_samples": 1,
           "location": {
             "provider": "sampler.Shell",
             "center": [0, 0, 0],
-            "radius_min": 0.61,
-            "radius_max": 1.24,
-            "elevation_min": 5,
+            "radius_min": 0.2,
+            "radius_max": 1.0,
+            "elevation_min": 25,
             "elevation_max": 89,
             "uniform_elevation": True
           },
@@ -321,9 +292,10 @@
                 "provider": "getter.Entity",
                 "conditions": {
                   "type": "MESH",
-                  "cp_bop_dataset_name": "<args:1>",
+                  "cp_shapenet":True
+
                 },
-                "random_samples": 10
+                "random_samples":1
               }
             },
             "inplane_rot": {
@@ -346,9 +318,15 @@
       }
     },
     {
+      "module": "renderer.SegMapRenderer",
+      "config": {
+        "map_by": ["cp_background", "instance"]
+      }
+    },
+    {
       "module": "writer.BopWriter",
       "config": {
-        "dataset": "<args:1>",
+        "dataset": "",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [
@@ -359,3 +337,40 @@
     }
   ]
 }
+
+
+
+
+
+
+#    {
+#      "module": "manipulators.MaterialManipulator",
+#      "config": {
+#        "selector": {
+#          "provider": "getter.Material",
+#          "conditions": [
+#          {
+#            "name": ".*"
+#          }
+#          ]
+#        },
+#        "cf_set_base_color": {
+#          "provider": "sampler.Color",
+#          "grey": True,
+#          "min": [0.25, 0.25, 0.25, 1],
+#          "max": [1, 1, 1, 1]
+#        },
+#        "cf_set_specular": {
+#          "provider": "sampler.Value",
+#          "type": "float",
+#          "min": 0.0,
+#          "max": 1.0
+#        },
+#        "cf_set_roughness": {
+#          "provider": "sampler.Value",
+#          "type": "float",
+#          "min": 0.0,
+#          "max": 1.0
+#        }
+#      }
+#    },

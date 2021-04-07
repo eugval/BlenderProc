@@ -94,7 +94,7 @@
       "module": "loader.ShapeNetLoader",
       "config": {
         "data_path": "<args:2>",
-        "used_synset_id": "02801938",
+        "used_synset_id": "03797390",
         "add_properties": {
           "cp_shape_net_object": True,
           # set the custom property physics to True

@@ -2,6 +2,9 @@
 import sys
 import os
 from sys import platform
+import pydevd_pycharm
+
+
 
 
 # Make sure the current script directory is in PATH, so we can load other python modules
@@ -24,10 +27,13 @@ sys.path.append(packages_path)
 argv = sys.argv
 batch_index_file = None
 
+if( '--debug' in argv):
+    pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
+
 if "--batch-process" in argv:
     batch_index_file = argv[argv.index("--batch-process") + 1]
 
-argv = argv[argv.index("--") + 1:]
+argv = argv[argv.index("--") + 1:]# +["/Users/Tjoun/BlenderProc/resources/Shapenet.v2" "/Users/Tjoun/BlenderProc/examples/OneObj/output"]
 working_dir = os.path.dirname(os.path.abspath(__file__))
 
 from src.main.Pipeline import Pipeline

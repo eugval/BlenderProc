@@ -2,6 +2,9 @@
 import os
 import bpy
 import sys
+import pydevd_pycharm
+
+#pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
 
 # Make sure the current script directory is in PATH, so we can load other python modules
 working_dir = os.path.dirname(bpy.context.space_data.text.filepath) + "/../"
@@ -27,8 +30,11 @@ for module in list(sys.modules.keys()):
 
 from src.main.Pipeline import Pipeline
 
-config_path = "examples/debugging/config.yaml"
-args = []  # Put in here arguments to use for filling the placeholders in the config file.
+config_path = "examples/OneObj/config.yaml"
+args = ["/Users/Tjoun/Projects/BlenderProc/examples/OneObj/output",
+        "/Users/Tjoun/Projects/BlenderProc/resources/ShapeNet.v2",
+        "/Users/Tjoun/Projects/BlenderProc/resources/cctextures"
+        ]  # Put in here arguments to use for filling the placeholders in the config file.
 
 # Focus the 3D View, this is necessary to make undo work (otherwise undo will focus on the scripting area)
 for window in bpy.context.window_manager.windows:
@@ -41,7 +47,7 @@ for window in bpy.context.window_manager.windows:
             break
 
 # Store temp files in the same directory for debugging
-temp_dir = "examples/debugging/temp"
+temp_dir = "examples/OneObj/temp"
 
 try:
     # In this debug case the rendering is avoided, everything is executed except the final render step

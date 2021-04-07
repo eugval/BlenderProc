@@ -30,6 +30,7 @@ parser.add_argument('--batch_process', help='Renders a batch of house-cam combin
 parser.add_argument('--temp-dir', dest='temp_dir', default=None, help="The path to a directory where all temporary output files should be stored. If it doesn't exist, it is created automatically. Type: string. Default: \"/dev/shm\" or \"/tmp/\" depending on which is available.")
 parser.add_argument('--keep-temp-dir', dest='keep_temp_dir', action='store_true', help="If set, the temporary directory is not removed in the end.")
 parser.add_argument('-h', '--help', dest='help', action='store_true', help='Show this help message and exit.')
+parser.add_argument('--debug', default= False, help='Runs the pycharm debugger')
 args = parser.parse_args()
 
 if args.config is None:
@@ -273,12 +274,16 @@ print("Using temporary directory: " + temp_dir)
 if not os.path.exists(temp_dir):
     os.makedirs(temp_dir)
 
+if(args.debug):
+    debug_flag = ['--debug']
+else:
+    debug_flag = []
 
 if not args.batch_process:
-    p = subprocess.Popen([blender_run_path, "--background", "--python-exit-code", "2", "--python", path_src_run, "--", args.config, temp_dir] + args.args,
+    p = subprocess.Popen([blender_run_path,*debug_flag, "--background", "--python-exit-code", "2", "--python", path_src_run, "--", args.config, temp_dir] + args.args,
                          env=dict(os.environ, PYTHONPATH=""), cwd=repo_root_directory)
 else:  # Pass the index file path containing placeholder args for all input combinations (cam, house, output path)
-    p = subprocess.Popen([blender_run_path, "--background", "--python-exit-code", "2", "--python", path_src_run, "--",  args.config, temp_dir, "--batch-process", args.batch_process],
+    p = subprocess.Popen([blender_run_path,*debug_flag, "--background", "--python-exit-code", "2", "--python", path_src_run, "--",  args.config, temp_dir, "--batch-process", args.batch_process],
                          env=dict(os.environ, PYTHONPATH=""), cwd=repo_root_directory)
 
 

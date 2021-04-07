@@ -2,9 +2,10 @@
 {
   "version": 3,
   "setup": {
-    "blender_install_path": "/home/<env:USER>/Projects/dependencies/blender/",
+    "blender_install_path": "/home_local/<env:USER>/Projects/dependencies/blender/",
     "pip": [
-      "h5py"
+      "h5py",
+      "pydevd-pycharm~=193.6911.25",
     ]
   },
   "modules": [

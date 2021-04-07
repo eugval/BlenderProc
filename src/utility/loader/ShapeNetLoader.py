@@ -11,6 +11,7 @@ from src.utility.LabelIdMapping import LabelIdMapping
 from src.utility.MeshObjectUtility import MeshObject
 from src.utility.Utility import Utility
 from src.utility.loader.ObjectLoader import ObjectLoader
+import numpy as np
 
 
 class ShapeNetLoader:
@@ -37,10 +38,14 @@ class ShapeNetLoader:
 
         files_with_fitting_synset = ShapeNetLoader._get_files_with_synset(used_synset_id, used_source_id, taxonomy_file_path, data_path)
         selected_obj = random.choice(files_with_fitting_synset)
+        # selected_obj_normalisation_path = json.load(open('/'.join(selected_obj.split('/')[:-1])+'/model_normalized.json'))
         loaded_obj = ObjectLoader.load(selected_obj)
+        selected_scale = np.random.uniform(0.06, 0.14)
 
         for obj in loaded_obj:
+            obj.set_scale([selected_scale]*3)
             obj.set_cp("used_synset_id", used_synset_id)
+            obj.set_cp("category_id", used_synset_id)
             obj.set_cp("used_source_id", pathlib.PurePath(selected_obj).parts[-3])
 
         ShapeNetLoader._correct_materials(loaded_obj)
