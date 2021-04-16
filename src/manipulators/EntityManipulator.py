@@ -10,6 +10,8 @@ from src.main.Module import Module
 from src.provider.getter.Material import Material
 from src.utility.Config import Config
 from mathutils import Matrix
+# from src.utility.Utility import Utility
+# import json
 
 class EntityManipulator(Module):
     """
@@ -340,6 +342,8 @@ class EntityManipulator(Module):
                     self._add_uv_mapping(entity, value)
                 elif key_copy == "randomize_materials" and requested_cf:
                     self._randomize_materials(entity, value)
+                elif key_copy == "add_uniform_scale" and requested_cf:
+                    self._add_uniform_scale(entity,value)
                 # if key had a cp_ prefix - treat it as a custom property
                 # values will be overwritten for existing custom property,
                 # but if the name is new then new custom property will be created
@@ -402,6 +406,19 @@ class EntityManipulator(Module):
             params.update({key: result})
 
         return params
+
+    def _add_uniform_scale(self,entity, value):
+        setattr(entity, 'scale', [value]*3)
+
+    # def _add_uniform_scale_per_category(self,entity, value):
+    #     path = Utility.resolve_path(value)
+    #     category_scale_dict = json.load(path)
+    #
+    #     category = entity.name.split("_")[0]
+    #
+    #     s_value = np.random.uniform(*category_scale_dict[category])
+    #
+    #     setattr(entity, 'scale', [s_value]*3)
 
     def _add_modifier(self, entity, value):
         """ Adds modifier to a selected entity.

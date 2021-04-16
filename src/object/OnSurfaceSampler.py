@@ -193,6 +193,9 @@ class OnSurfaceSampler(Module):
                     placed_successfully = True
                     break
 
+                # Add a tiny displacement to make sure it is above surface
+                obj.location += mathutils.Vector([0.0,0.0,0.0001])
+
                 if not placed_successfully:
                     print("Giving up on {}, deleting...".format(obj.name))
                     bpy.ops.object.select_all(action='DESELECT')

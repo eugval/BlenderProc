@@ -25,35 +25,24 @@
         }
       }
     },
+
     {
-        "module": "loader.ModelNetLoader",
-        "config": {
-          "data_path": "<args:1>",
-          "model_name": "cup_0012", #03797390
-          ""
-          "train": True,
-          "samples" : 1,
-          "replacement": False,
-          "add_properties": {
-            "cp_physics": True,
-            "cp_shapenet":True,
+            "module": "loader.ModelNetLoader",
+            "config": {
+              "data_path": "<args:1>",
+              "category": "cup", #03797390
+              "train": True,
+              "samples" :1,
+              "replacement": False,
+              "add_properties": {
+                "cp_physics": True,
+                "cp_shapenet":True,
+              },
+              "cf_set_shading": "SMOOTH"
+            }
           },
-          "cf_set_shading": "SMOOTH"
-        }
-      },
-#    {
-#      "module": "loader.ShapeNetLoader",
-#      "config": {
-#        "data_path": "<args:1>",
-#        "used_synset_id": "03063599", #03797390
-#        "used_source_id": "",
-#        "add_properties": {
-#          "cp_physics": True,
-#          "cp_shapenet":True,
-#        },
-#        "cf_set_shading": "SMOOTH"
-#      }
-#    },
+
+
     {
       "module": "manipulators.EntityManipulator",
       "config": {
@@ -65,13 +54,13 @@
           }
         },
         "name": "object0",
-#         "mode": "once_for_each",
-#        "cf_add_uniform_scale":{
-#            "provider": "sampler.Value",
-#            "type": "float",
-#            "min": 0.06,
-#            "max": 0.15
-#          }
+         "mode": "once_for_each",
+        "cf_add_uniform_scale":{
+            "provider": "sampler.Value",
+            "type": "float",
+            "min": 0.06,
+            "max": 0.15
+          }
 
 #
 #        "location": {
@@ -94,7 +83,7 @@
         "selector": {
           "provider": "getter.Entity",
           "conditions": {
-            "type": "MESH"
+          "cp_shapenet":True,
           }
         },
         "cf_add_uv_mapping":{
@@ -201,28 +190,28 @@
         }
       }
     },
-#    {
-#      "module": "manipulators.EntityManipulator",
-#      "config": {
-#        "selector": {
-#          "provider": "getter.Entity",
-#          "conditions": {
-#            "name": "ground_plane.*"
-#          }
-#        },
-#        "mode": "once_for_each",
-#        "cf_randomize_materials": {
-#          "randomization_level": 1,
-#          "materials_to_replace_with": {
-#            "provider": "getter.Material",
-#            "random_samples": 1,
-#            "conditions": {
-#              "cp_is_cc_texture": True
-#            }
-#          }
-#        }
-#      }
-#    },
+    {
+      "module": "manipulators.EntityManipulator",
+      "config": {
+        "selector": {
+          "provider": "getter.Entity",
+          "conditions": {
+            "name": "ground_plane.*"
+          }
+        },
+        "mode": "once_for_each",
+        "cf_randomize_materials": {
+          "randomization_level": 1,
+          "materials_to_replace_with": {
+            "provider": "getter.Material",
+            "random_samples": 1,
+            "conditions": {
+              "cp_is_cc_texture": True
+            }
+          }
+        }
+      }
+    },
     {
       "module": "object.OnSurfaceSampler",
       "config": {
@@ -278,26 +267,16 @@
         {
           "location": {
             "provider": "sampler.Shell",
-            "center": {
-                "provider": "getter.POI",
-                "selector": {
-                  "provider": "getter.Entity",
-                  "conditions": {
-                    "type": "MESH",
-                    "cp_shapenet":True
-                    },
-                  "random_samples":1
-                }
-              },
+            "center": [0, 0, 0],
             "radius_min":0.5, # now depends on the bottom area of the box
             "radius_max": 1.5, # this one too
-            "elevation_min": 2,
+            "elevation_min": 5,
             "elevation_max": 89,
             "uniform_elevation": True
           },
           "color": {
             "provider": "sampler.Color",
-            "min": [0.5, 0.5, 0.5, 1.0],
+            "min": [0.2, 0.2, 0.2, 1.0],
             "max": [1.0, 1.0, 1.0, 1.0]
           },
           "type": "POINT",
@@ -305,7 +284,7 @@
             "provider": "sampler.Value",
             "type": "int",
             "min": 150,
-            "max": 350
+            "max": 250
           }
         }
         ]
@@ -314,10 +293,6 @@
     {
       "module": "camera.CameraSampler",
       "config": {
-        "intrinsics":{
-                       "resolution_x":256,
-                       "resolution_y":256
-        },
         "cam_poses": [
         {
           "proximity_checks": {
@@ -345,7 +320,7 @@
               }
             },
             "radius_min": 0.15,
-            "radius_max":0.45,
+            "radius_max":0.7,
             "elevation_min": 15.0,
             "elevation_max": 89.9,
             "uniform_elevation": True
@@ -398,7 +373,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Single_colour_single_cup",
+        "dataset": "",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [
@@ -406,7 +381,7 @@
           ]
         }
       }
-    }
+    },
 
   ]
 }

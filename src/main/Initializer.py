@@ -105,6 +105,7 @@ class Initializer(Module):
         CameraUtility.set_stereo_parameters(DefaultConfig.stereo_convergence_mode, DefaultConfig.stereo_convergence_distance, DefaultConfig.stereo_interocular_distance)
 
         random_seed = os.getenv("BLENDER_PROC_RANDOM_SEED")
+        # random_seed = 2
         if random_seed:
             print("Got random seed: {}".format(random_seed))
             try:

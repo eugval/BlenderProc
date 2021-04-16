@@ -29,19 +29,24 @@ class FolderStructureWriter(WriterInterface):
 
     def run(self):
 
-      output_dir = self.config.get_string("output_dir")
-      run_number = self.config.get_int('run_number',0)
+        output_dir = self.config.get_string("output_dir")
+        data_path = os.path.join(output_dir,'data')
 
-      main_path = os.path.join(output_dir,'{}'.format(run_number))
+        if(not os.path.exists(data_path)):
+            os.makedirs(data_path)
 
-      if(not os.path.exists(main_path)):
-          os.makedirs(main_path)
 
-          os.makedirs(os.path.join(main_path,'rgb'))
-          os.makedirs(os.path.join(main_path,'cam_poses'))
-          os.makedirs(os.path.join(main_path, 'correspondances'))
-          os.makedirs(os.path.join(main_path, 'corrspondance_semantic_maps'))
-          os.makedirs(os.path.join(main_path, 'depth_images'))
-          os.makedirs(os.path.join(main_path, 'segmentation_masks'))
+        run_number = sum(os.path.isdir(i) for i in os.listdir(data_path))
+
+        main_path = os.path.join(data_path,'{:06d}'.format(run_number))
+
+        if(not os.path.exists(main_path)):
+            os.makedirs(main_path)
+            os.makedirs(os.path.join(main_path,'rgb'))
+            os.makedirs(os.path.join(main_path,'cam_poses'))
+            os.makedirs(os.path.join(main_path, 'correspondances'))
+            os.makedirs(os.path.join(main_path, 'corrspondance_semantic_maps'))
+            os.makedirs(os.path.join(main_path, 'depth_images'))
+            os.makedirs(os.path.join(main_path, 'segmentation_masks'))
 
 

@@ -1,12 +1,14 @@
 import bpy
 import numpy as np
+import mathutils
 from mathutils import Matrix, Vector, Euler
 
 from src.main.Module import Module
 from src.utility.CameraUtility import CameraUtility
 from src.utility.Utility import Utility
 from src.utility.MathUtility import MathUtility
-
+from scipy.spatial.transform import rotation as R
+from src.utility import TransformUtility as T
 
 class CameraInterface(Module):
     """
@@ -216,8 +218,8 @@ class CameraInterface(Module):
         """
         if not config.has_param("cam2world_matrix"):
             position = MathUtility.transform_point_to_blender_coord_frame(config.get_vector3d("location", [0, 0, 0]), self.source_frame)
+            #position = Vector((-0.01111459918320179, -0.051188092678785324, 0.19301876425743103))
 
-            # Rotation
             rotation_format = config.get_string("rotation/format", "euler")
             value = config.get_vector3d("rotation/value", [0, 0, 0])
             # Transform to blender coord frame
@@ -237,6 +239,10 @@ class CameraInterface(Module):
             if rotation_format == "look_at" or rotation_format == "forward_vec":
                 inplane_rot = config.get_float("rotation/inplane_rot", 0.0)
                 rotation_matrix = rotation_matrix @ Euler((0.0, 0.0, inplane_rot)).to_matrix()
+
+                extra_rot = config.get_vector("rotation/extra_rot", mathutils.Vector([0.,0.,0.]))
+                #extra_rot = Vector([0.3,-0.3,-0.7841])
+                rotation_matrix = rotation_matrix @ Euler(extra_rot).to_matrix()
 
             cam2world_matrix = Matrix.Translation(Vector(position)) @ rotation_matrix.to_4x4()
         else: 

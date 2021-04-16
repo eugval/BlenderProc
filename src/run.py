@@ -28,7 +28,7 @@ argv = sys.argv
 batch_index_file = None
 
 if( '--debug' in argv):
-    pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
+    pydevd_pycharm.settrace('localhost', port=1234, stdoutToServer=True, stderrToServer=True)
 
 if "--batch-process" in argv:
     batch_index_file = argv[argv.index("--batch-process") + 1]

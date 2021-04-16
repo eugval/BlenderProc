@@ -17,7 +17,7 @@ import numpy as np
 class ShapeNetLoader:
 
     @staticmethod
-    def load(data_path: str, used_synset_id: str, used_source_id: str = "") -> List[MeshObject]:
+    def load(data_path: str, used_synset_id: str, used_source_id: str = "", samples = 1, replacement = False) -> List[MeshObject]:
         """ This loads an object from ShapeNet based on the given synset_id, which specifies the category of objects to use.
 
         From these objects one is randomly sampled and loaded.
@@ -37,16 +37,22 @@ class ShapeNetLoader:
         taxonomy_file_path = os.path.join(data_path, "taxonomy.json")
 
         files_with_fitting_synset = ShapeNetLoader._get_files_with_synset(used_synset_id, used_source_id, taxonomy_file_path, data_path)
-        selected_obj = random.choice(files_with_fitting_synset)
-        # selected_obj_normalisation_path = json.load(open('/'.join(selected_obj.split('/')[:-1])+'/model_normalized.json'))
-        loaded_obj = ObjectLoader.load(selected_obj)
-        selected_scale = np.random.uniform(0.06, 0.14)
+        if replacement:
+            selected_obj = random.choices(files_with_fitting_synset, k = samples)
+        else:
+            selected_obj = random.sample(files_with_fitting_synset, k = samples)
 
-        for obj in loaded_obj:
-            obj.set_scale([selected_scale]*3)
+        # selected_obj_normalisation_path = json.load(open('/'.join(selected_obj.split('/')[:-1])+'/model_normalized.json'))
+        loaded_obj = []
+        for obj in selected_obj:
+            loaded_obj.extend(ObjectLoader.load(obj))
+        #selected_scale = np.random.uniform(0.06, 0.14)
+
+        for i, obj in enumerate(loaded_obj):
+            #obj.set_scale([selected_scale]*3)
             obj.set_cp("used_synset_id", used_synset_id)
             obj.set_cp("category_id", used_synset_id)
-            obj.set_cp("used_source_id", pathlib.PurePath(selected_obj).parts[-3])
+            obj.set_cp("used_source_id", pathlib.PurePath(selected_obj[i]).parts[-3])
 
         ShapeNetLoader._correct_materials(loaded_obj)
 

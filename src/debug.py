@@ -30,10 +30,8 @@ for module in list(sys.modules.keys()):
 
 from src.main.Pipeline import Pipeline
 
-config_path = "examples/OneObj/config.yaml"
-args = ["/Users/Tjoun/Projects/BlenderProc/examples/OneObj/output",
-        "/Users/Tjoun/Projects/BlenderProc/resources/ShapeNet.v2",
-        "/Users/Tjoun/Projects/BlenderProc/resources/cctextures"
+config_path = "examples/MultiObj/config.yaml"
+args = [ "examples/MultiObj/output" , " resources/ModelNet40/"," ~/Projects/BlenderProc/resources/cctextures/"
         ]  # Put in here arguments to use for filling the placeholders in the config file.
 
 # Focus the 3D View, this is necessary to make undo work (otherwise undo will focus on the scripting area)
