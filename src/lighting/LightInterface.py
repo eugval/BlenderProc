@@ -60,9 +60,39 @@ class LightInterface(Module):
         :param config: A configuration object which contains all parameters relevant for the new light source.
         """
         light = Light()
+
         light.set_type(config.get_string("type", 'POINT'))
         light.set_location(config.get_list("location", [0, 0, 0]))
         light.set_rotation_euler(config.get_list("rotation", [0, 0, 0]))
         light.set_energy(config.get_float("energy", 10.))
         light.set_color(config.get_list("color", [1, 1, 1])[:3])
         light.set_distance(config.get_float("distance", 0))
+
+        if config.has_param('locations'):
+            keyframe = 0
+            for location in config.get_list("locations"):
+                if bpy.context.scene.frame_end < keyframe + 1:
+                    bpy.context.scene.frame_end = keyframe + 1
+                light.set_location(list(location))
+                light.blender_obj.keyframe_insert(data_path='location', frame=keyframe)
+                keyframe+=1
+
+        if config.has_param('colors'):
+            keyframe = 0
+            for color in config.get_list("colors"):
+                if bpy.context.scene.frame_end < keyframe + 1:
+                    bpy.context.scene.frame_end = keyframe + 1
+                light.set_color(list(color))
+                light.blender_obj.keyframe_insert(data_path='color', frame=keyframe)
+                keyframe+=1
+
+
+        if config.has_param('energies'):
+            keyframe = 0
+            for energy in config.get_list("energies"):
+                if bpy.context.scene.frame_end < keyframe + 1:
+                    bpy.context.scene.frame_end = keyframe + 1
+                light.set_energy(float(energy))
+                light.blender_obj.keyframe_insert(data_path='energy', frame=keyframe)
+                keyframe+=1
+

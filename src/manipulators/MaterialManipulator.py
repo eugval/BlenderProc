@@ -519,6 +519,7 @@ class MaterialManipulator(Module):
         if shader_input_key_copy in principled_bsdf.inputs:
             if operation == "set":
                 principled_bsdf.inputs[shader_input_key_copy].default_value = value
+                #principled_bsdf.inputs[0].keyframe_insert(data_path="default_value", frame=frame)
             elif operation == "add":
                 if isinstance(principled_bsdf.inputs[shader_input_key_copy].default_value, float):
                     principled_bsdf.inputs[shader_input_key_copy].default_value += value

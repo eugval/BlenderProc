@@ -42,11 +42,12 @@ class ObjectLoader:
                 elif(filepath.endswith('.off')):
                     # load an .off file:
                     bpy.ops.import_mesh.off(filepath=filepath, **kwargs)
-                    # add a default material to ply file
-                    mat = bpy.data.materials.new(name="off_material")
-                    mat.use_nodes = True
                     loaded_objects = list(set(bpy.context.selected_objects) - previously_selected_objects)
+
                     for obj in loaded_objects:
+                        material_name = obj.name
+                        mat = bpy.data.materials.new(name=material_name + '_material')
+                        mat.use_nodes = True
                         obj.data.materials.append(mat)
                 elif filepath.endswith('.ply'):
                     # load a .ply mesh

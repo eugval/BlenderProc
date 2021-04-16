@@ -176,6 +176,7 @@ class CameraSampler(CameraInterface):
             self.min_var_diff_translation = sys.float_info.min
 
         self.cam_pose_collection = ItemCollection(self._sample_cam_poses, self.config.get_raw_dict("default_cam_param", {}))
+        self.validated_poses = 0
 
     def run(self):
         """ Sets camera poses. """
@@ -268,7 +269,8 @@ class CameraSampler(CameraInterface):
 
         if self._is_pose_valid(cam, cam_ob, cam2world_matrix):
             # Set camera extrinsics as the pose is valid
-            CameraUtility.add_camera_pose(cam2world_matrix)
+            CameraUtility.add_camera_pose(cam2world_matrix, frame =self.validated_poses)
+            self.validated_poses+=1
             return True
         else:
             return False
