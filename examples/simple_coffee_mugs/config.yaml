@@ -29,7 +29,8 @@
         "module": "loader.ModelNetLoader",
         "config": {
           "data_path": "<args:1>",
-          "model_name": "cup_0013", #03797390
+          #"model_name": "cup_0013", #03797390
+          "category": "coffee_cup", #03797390
            "scale_path": "./examples/MultiObj/per_category_scale.json",
           "train": True,
           "samples" : 1,
@@ -295,7 +296,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Randomise_lights",
+        "dataset": "Randomise_lights_coffee_cups",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [
