@@ -82,7 +82,7 @@ class LightInterface(Module):
             for color in config.get_list("colors"):
                 if bpy.context.scene.frame_end < keyframe + 1:
                     bpy.context.scene.frame_end = keyframe + 1
-                light.set_color(list(color))
+                light.set_color(list(color[:3]))
                 light.blender_obj.keyframe_insert(data_path='color', frame=keyframe)
                 keyframe+=1
 

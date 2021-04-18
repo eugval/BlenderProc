@@ -55,14 +55,23 @@ class Color(Provider):
         # sample only grey values
         grey = self.config.get_bool("grey", False)
 
-        color = mathutils.Vector([0, 0, 0, 0])
-        for i in range(4):
-            if 0 <= min[i] <= 1 and 0 <= max[i] <= 1:
-                if grey and 0 < i < 3:
-                    color[i] = color[i-1]
-                else:
-                    color[i] = random.uniform(min[i], max[i])
-            else:
-                raise RuntimeError("min and max vectors must be composed of values in [0, 1] range!")
+        number_of_samples = self.config.get_int("number_of_samples",1)
 
-        return color
+        colours = []
+        for sample in range(number_of_samples):
+            color = mathutils.Vector([0, 0, 0, 0])
+            for i in range(4):
+                if 0 <= min[i] <= 1 and 0 <= max[i] <= 1:
+                    if grey and 0 < i < 3:
+                        color[i] = color[i-1]
+                    else:
+                        color[i] = random.uniform(min[i], max[i])
+                else:
+                    raise RuntimeError("min and max vectors must be composed of values in [0, 1] range!")
+
+            colours.append(color)
+
+        if(len(colours)> 1):
+            return colours
+        else:
+            return colours[0]

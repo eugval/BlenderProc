@@ -512,14 +512,28 @@ class MaterialManipulator(Module):
         """
         nodes = material.node_tree.nodes
         principled_bsdf = Utility.get_the_one_node_with_type(nodes, "BsdfPrincipled")
+        keyframes = False
+
+        if(shader_input_key[-8:] == 'keyframe'):
+            shader_input_key = shader_input_key[:-9]
+            keyframes = True
         shader_input_key_copy = shader_input_key.replace("_", " ").title()
         if principled_bsdf.inputs[shader_input_key_copy].links:
             links = material.node_tree.links
             links.remove(principled_bsdf.inputs[shader_input_key_copy].links[0])
         if shader_input_key_copy in principled_bsdf.inputs:
             if operation == "set":
-                principled_bsdf.inputs[shader_input_key_copy].default_value = value
-                #principled_bsdf.inputs[0].keyframe_insert(data_path="default_value", frame=frame)
+                if(keyframes):
+                    keyframe = 0
+                    for single_value in value:
+                        if bpy.context.scene.frame_end < keyframe + 1:
+                            bpy.context.scene.frame_end = keyframe + 1
+                        principled_bsdf.inputs[shader_input_key_copy].default_value = single_value
+                        principled_bsdf.inputs[shader_input_key_copy].keyframe_insert(data_path="default_value", frame=keyframe)
+                        keyframe += 1
+                else:
+                    principled_bsdf.inputs[shader_input_key_copy].default_value = value
+
             elif operation == "add":
                 if isinstance(principled_bsdf.inputs[shader_input_key_copy].default_value, float):
                     principled_bsdf.inputs[shader_input_key_copy].default_value += value
