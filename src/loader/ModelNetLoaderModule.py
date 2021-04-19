@@ -160,7 +160,10 @@ class ModelNetLoaderModule(LoaderInterface):
             if(category_scale_dict is None):
                 s_value = 1.0
             else:
-                s_value = random.uniform(*category_scale_dict[category])
+                if category in category_scale_dict:
+                    s_value = random.uniform(*category_scale_dict[category])
+                else:
+                    s_value = random.uniform(*category_scale_dict['fallback'])
             # obj.select()
             # bpy.ops.object.origin_set(type='GEOMETRY_ORIGIN')
             bpy.context.view_layer.objects.active = obj.blender_obj

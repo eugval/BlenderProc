@@ -30,7 +30,11 @@
         "config": {
           "data_path": "<args:1>",
           #"model_name": "cup_0013", #03797390
-          "category": "coffee_cup", #03797390
+          "categories": [ "bathtub", "bed", "cup", "bookshelf", "bottle",
+                         "bowl","bench","bookshelf",
+                         "chair", "cone","desk","flower_pot","glass_box", "plant", "monitor",
+                         "guitar", "keyboard",
+                          "lamp","laptop","night_stand","radio","vase","xbox",], #03797390
            "scale_path": "./examples/MultiObj/per_category_scale.json",
           "train": True,
           "samples" : 1,
@@ -146,40 +150,41 @@
             }
           }
         },
-        # "cf_set_base_color": [0.3, 0.6, 0.1, 1],
-          "cf_set_base_color_keyframe":  {
-            "provider": "sampler.Color",
-            "min": [0.0, 0.0, 0.0, 1.0],
-            "max": [1.0, 1.0, 1.0, 1.0],
-            "number_of_samples": 10,
-          },
+         "cf_set_base_color": [0.3, 0.6, 0.1, 1],
+#          "cf_set_base_color_keyframe":  {
+#            "provider": "sampler.Color",
+#            "min": [0.0, 0.0, 0.0, 1.0],
+#            "max": [1.0, 1.0, 1.0, 1.0],
+#            "number_of_samples": 10,
+#          },
         }
       },
 
-    {
-      "module": "manipulators.MaterialManipulator",
-      "config": {
-        "selector": {
-          "provider": "getter.Material",
-          "conditions": {
-            "cf_use_materials_of_objects": {
-              "provider": "getter.Entity",
-              "conditions": {
-                "name": "ground_plane.*",
-              }
-            }
-          },
-
-        },
-        "mode":"once_for_each",
-        "cf_set_base_color_keyframe": {
-          "provider": "sampler.Color",
-          "min": [0., 0., 0., 1.0],
-          "max": [1.0, 1.0, 1.0, 1.0],
-          "number_of_samples": 10,
-        },
-      }
-    },
+#    {
+#      "module": "manipulators.MaterialManipulator",
+#      "config": {
+#        "selector": {
+#          "provider": "getter.Material",
+#          "conditions": {
+#            "cf_use_materials_of_objects": {
+#              "provider": "getter.Entity",
+#              "conditions": {
+#                "name": "ground_plane.*",
+#              }
+#            }
+#          },
+#
+#        },
+#        "mode":"once_for_each",
+#        "cf_set_base_color_keyframe": [1.0, 1.0, 1.0, 1.0]
+#        "cf_set_base_color_keyframe": {
+#          "provider": "sampler.Color",
+#          "min": [0., 0., 0., 1.0],
+#          "max": [1.0, 1.0, 1.0, 1.0],
+#          "number_of_samples": 10,
+#        },
+#      }
+#    },
 
 
 
@@ -209,19 +214,19 @@
             "uniform_elevation": True,
             "number_of_samples" :10
           },
-          #"color": [1.0,1.0,1.0,1.0],
-          "colors":{
-            "provider": "sampler.Color",
-            "min": [0.5, 0.5, 0.5, 1.0],
-            "max": [1.0, 1.0, 1.0, 1.0],
-            "number_of_samples":10,
-          },
+          "color": [1.0,1.0,1.0,1.0],
+#          "colors":{
+#            "provider": "sampler.Color",
+#            "min": [0.5, 0.5, 0.5, 1.0],
+#            "max": [1.0, 1.0, 1.0, 1.0],
+#            "number_of_samples":10,
+#          },
           "type": "POINT",
           "energy":{
             "provider": "sampler.Value",
             "type": "int",
             "min": 20,
-            "max": 300
+            "max": 250
           },
         }
         ]
@@ -231,8 +236,8 @@
       "module": "camera.CameraSampler",
       "config": {
         "intrinsics":{
-                       "resolution_x":256,
-                       "resolution_y":256
+               "resolution_x":256,
+               "resolution_y":256
         },
         "cam_poses": [
         {
@@ -280,12 +285,11 @@
                 "random_samples":1
               }
             },
-
             "extra_rot": {
               "provider": "sampler.Uniform3d",
               "max": [0.2618, 0.2618, 0.7854],
               "min": [-0.2618, -0.2618,-0.7854]
-                          }
+              }
           }
         }
         ]
@@ -308,7 +312,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Randomise_lights_colours_per_step_coffee_cups",
+        "dataset": "Many_classes",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [
