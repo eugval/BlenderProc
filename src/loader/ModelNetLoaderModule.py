@@ -111,7 +111,7 @@ class ModelNetLoaderModule(LoaderInterface):
                 #sample the categories, making sure that the different categories are balanced in their representation
                 files_in_category = glob.glob(os.path.join(modelnet_path, category, train_str, "*.off"))
                 len_files_in_category = len(files_in_category)
-                files += random.sample(files_in_category, k = max(len_files_in_category, 2*samples))
+                files += random.sample(files_in_category, k = min(len_files_in_category, 2*samples))
 
             if replacement:
                 selected_files = random.choices(files, k=samples)
@@ -132,7 +132,7 @@ class ModelNetLoaderModule(LoaderInterface):
                 # sample the categories, making sure that the different categories are balanced in their representation
                 files_in_category =  glob.glob(os.path.join(entry, train_str, "*.off"))
                 len_files_in_category = len(files_in_category)
-                files += random.sample(files_in_category, k=max(len_files_in_category, 2 * samples))
+                files += random.sample(files_in_category, k=min(len_files_in_category, 2 * samples))
 
             if replacement:
                 selected_files = random.choices(files, k=samples)
