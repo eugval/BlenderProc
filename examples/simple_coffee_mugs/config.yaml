@@ -30,11 +30,11 @@
         "config": {
           "data_path": "<args:1>",
           #"model_name": "cup_0013", #03797390
-          "categories": [ "bathtub", "bed", "cup", "bookshelf", "bottle",
+          "categories": [ "bathtub", "cup", "bookshelf", "bottle",
                          "bowl","bench","bookshelf",
                          "chair", "cone","desk","flower_pot","glass_box", "plant", "monitor",
                          "guitar", "keyboard",
-                          "lamp","laptop","night_stand","radio","vase","xbox",], #03797390
+                          "lamp","laptop","radio","vase","xbox",], #03797390
            "scale_path": "./examples/MultiObj/per_category_scale.json",
           "train": True,
           "samples" : 1,
