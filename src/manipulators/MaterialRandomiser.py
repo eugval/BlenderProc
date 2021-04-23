@@ -10,7 +10,9 @@ from src.utility import BlenderUtility
 from src.utility.Config import Config
 from src.utility.Utility import Utility
 import numpy as np
+import glob
 
+from src.utility.MaterialLoaderUtility import MaterialLoaderUtility
 
 class MaterialRandomiser(Module):
     """
@@ -376,8 +378,6 @@ class MaterialRandomiser(Module):
 
         op_mode = self.config.get_string("mode", "once_for_each")
 
-
-
         if not materials:
             warnings.warn("Warning: No materials selected inside of the MaterialManipulator")
             return
@@ -385,6 +385,12 @@ class MaterialRandomiser(Module):
         if op_mode == "once_for_all":
             # get values to set if they are to be set/sampled once for all selected materials
             randomisation_mode = self._choose_randomisations(params_conf)
+
+        textures_folder_path = Utility.resolve_path(self.config.get_string('color_textures_path'))
+        gray_textures_folder_path = Utility.resolve_path(self.config.get_string('gray_textures_path'))
+
+        #TODO: Rename the textures so that I can just sample an index and load that for speed
+        texture_paths = glob.glob(os.path.join(textures_folder_path, '*.png'))
 
         for material in materials:
             if not material.use_nodes:
@@ -399,9 +405,40 @@ class MaterialRandomiser(Module):
                 elif (randomisation_mode["type"] == "realistic_random"):
                     pass
                 elif (randomisation_mode["type" ] == "image_random"):
-                    #Maybe also have a displacement image
-                    #check load texture and set texture
-                    pass
+
+                    # Maybe also have a displacement image
+
+                    # Set base color
+                    selected_texture_path = np.random.choice(texture_paths)
+
+                    loaded_texture= self._load_textures({'base_color':selected_texture_path})
+                    self._set_textures(loaded_texture,material)
+
+
+                    # Set displacement
+                    displacement_probability =  params_conf.get_float('displacement_probability', 1.0)
+                    r = np.random.uniform()
+                    if (r <displacement_probability):
+                        selected_texture_path = np.random.choice(texture_paths)
+
+                        loaded_texture = self._load_textures({'displacement': selected_texture_path})
+                        displacement_multiplier_min = params_conf.get_float('displacement_multiplier_min', 0.001)
+                        displacement_multiplier_max = params_conf.get_float('displacement_multiplier_max',0.02)
+
+                        displacement_multiplier = np.asarray(np.exp(np.random.uniform(np.log(displacement_multiplier_min), np.log(displacement_multiplier_max))))
+                        self._link_specific_color_to_displacement_for_mat(material,loaded_texture['displacement'],displacement_multiplier)
+
+
+
+                    # Randomise Keyframes
+                    if not self.config.get_bool('keep_base_color', False):
+                        randomisation_mode['chosen_parameters'].remove('base_color')
+
+                    self._randomise_parameters(material, randomisation_mode['chosen_parameters'], params_conf)
+
+
+
+
                 elif (randomisation_mode["type"] == "monochrome_random"):
                     self._randomise_parameters(material, randomisation_mode['chosen_parameters'], params_conf)
                 else:
@@ -604,7 +641,8 @@ class MaterialRandomiser(Module):
             node = nodes.new('ShaderNodeTexImage')
             node.label = key
             out_point = node.outputs['Color']
-            in_point = nodes["Principled BSDF"].inputs[key]
+            shader_input_key_copy = key.replace("_", " ").title()
+            in_point = nodes["Principled BSDF"].inputs[shader_input_key_copy]
             node.image = loaded_textures[key]
             links.new(out_point, in_point)
 
@@ -675,6 +713,28 @@ class MaterialRandomiser(Module):
             else:
                 raise Exception("The amount of output and texture nodes of the material '{}' is not supported by "
                                 "this custom function.".format(material))
+
+    @staticmethod
+    def _link_specific_color_to_displacement_for_mat(material, texture_image, multiply_factor):
+        """ Link the output of the texture image to the displacement. Fails if there is more than one texture image.
+
+        :param material: Material to be modified. Type: bpy.types.Material.
+        :param multiply_factor: Multiplication factor of the displacement. Type: float.
+        """
+        nodes = material.node_tree.nodes
+        output = Utility.get_the_one_node_with_type(nodes, "OutputMaterial")
+
+        texture = nodes.new('ShaderNodeTexImage')
+        texture.image =texture_image
+        texture.label = 'Disp'
+
+        if texture is not None:
+            math_node = nodes.new(type='ShaderNodeMath')
+            math_node.operation = "MULTIPLY"
+            math_node.inputs[1].default_value = multiply_factor
+            material.node_tree.links.new(texture.outputs["Color"], math_node.inputs[0])
+            material.node_tree.links.new(math_node.outputs["Value"], output.inputs["Displacement"])
+
 
     @staticmethod
     def _map_vertex_color(material, layer_name):

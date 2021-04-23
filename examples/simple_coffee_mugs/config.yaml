@@ -20,7 +20,11 @@
       "config": {
         "global": {
           "output_dir": "<args:0>",
-          "run_number":0
+          "run_number":0,
+            "color_textures_path":'./resources/textures',
+            "gray_textures_path":'./resources/gray_textures',
+            "cc_textures_path":'./resources/cctextures',
+            "haven_textures_path":'./resources/haven',
          # "sys_paths": ["<args:2>"]
         }
       }
@@ -105,6 +109,22 @@
     },
 
 
+ {
+      "module": "manipulators.EntityManipulator",
+      "config": {
+        "selector": {
+          "provider": "getter.Entity",
+          "conditions": {
+            "type": "MESH"
+          }
+        },
+        "cf_add_uv_mapping":{
+                "projection":"cube",
+                "forced_recalc_of_uv_maps": True
+        }
+      }
+    },
+
     {
       "module": "manipulators.EntityManipulator",
       "config": {
@@ -146,7 +166,7 @@
             "mode": "loguniform",
             "number_of_samples":"<args:2>",
             "min": 0.1,
-            "max": 10
+            "max": 20,
           }
         }
       }
@@ -170,13 +190,14 @@
         },
         "number_of_samples": "<args:2>",
         "parameters_to_randomise":["base_color", "roughness", "metallic", "specular", "anisotropic", "sheen", "clearcoat"],
-        "randomisation_probabilities":[1.0, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
+        "randomisation_probabilities":[0.25, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
          "metallic_min": 0.5,
         "anisotropic_min":0.5,
          "clearcoat_min": 0.5,
          "clearcoat_roughness_min": 0.5,
         "sheen_min": 0.5,
-        "randomisation_types" : ["monochrome_random"],
+         "keep_base_color":True,
+        "randomisation_types" : ["image_random"],
          "randomisation_type_probabilities": [1.0] ,
         }
       },
@@ -268,8 +289,8 @@
               "number_of_samples":"<args:2>",
               "provider": "sampler.Value",
               "type": "int",
-              "min": 1,
-              "max": 300
+              "min": 25,
+              "max": 350
             },
         }
 
@@ -364,7 +385,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Monochrome_randomisation",
+        "dataset": "Image_randomisation",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [
