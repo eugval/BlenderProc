@@ -163,7 +163,7 @@
             "cf_use_materials_of_objects": {
               "provider": "getter.Entity",
               "conditions": {
-                "cp_manip_object":True,
+                "type":"MESH",
               }
             }
           }
@@ -184,33 +184,9 @@
 
 
 
-    {
-      "module": "manipulators.MaterialManipulator",
-      "config": {
-        "selector": {
-          "provider": "getter.Material",
-          "conditions": {
-            "cf_use_materials_of_objects": {
-              "provider": "getter.Entity",
-              "conditions": {
-                "name": "ground_plane.*",
-              }
-            }
-          },
 
-        },
-        "mode":"once_for_each",
-        "cf_set_base_color": [1.0, 1.0, 1.0, 1.0]
-#        "cf_set_base_color_keyframe": {
-#          "provider": "sampler.Color",
-#          "min": [0., 0., 0., 1.0],
-#          "max": [1.0, 1.0, 1.0, 1.0],
-#          "number_of_samples":"<args:2>",
-#        },
-      }
-    },
 
-#
+
 
 
     {
