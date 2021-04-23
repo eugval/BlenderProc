@@ -9,9 +9,10 @@ from src.main.Module import Module
 from src.utility import BlenderUtility
 from src.utility.Config import Config
 from src.utility.Utility import Utility
+import numpy as np
 
 
-class MaterialManipulator(Module):
+class MaterialRandomiser(Module):
     """
     Performs manipulation os selected materials.
 
@@ -207,7 +208,7 @@ class MaterialManipulator(Module):
 
     **Configuration**:
 
-    .. list-table:: 
+    .. list-table::
         :widths: 25 100 10
         :header-rows: 1
 
@@ -218,13 +219,13 @@ class MaterialManipulator(Module):
           - Materials to become subjects of manipulation.
           - Provider
         * - mode
-          - Mode of operation. Default: "once_for_each". Available: 'once_for_each' (if samplers are called, new sampled 
+          - Mode of operation. Default: "once_for_each". Available: 'once_for_each' (if samplers are called, new sampled
             value is set to each selected material), 'once_for_all' (sampling once for all of the selected materials).
           - string
 
     **Values to set**:
 
-    .. list-table:: 
+    .. list-table::
         :widths: 25 100 10
         :header-rows: 1
 
@@ -243,7 +244,7 @@ class MaterialManipulator(Module):
 
     **Available custom functions**:
 
-    .. list-table:: 
+    .. list-table::
         :widths: 25 100 10
         :header-rows: 1
 
@@ -261,17 +262,17 @@ class MaterialManipulator(Module):
           - Texture data as {texture_type (type of the image/map, i.e. color, roughness, reflection, etc.):
             texture_path} pairs. Texture_type should be equal to the Shader input name in order to be assigned to a
             ShaderTexImage node that will be linked to this input. Label represents to which shader input this node
-            is connected. 
+            is connected.
           - dict
         * - cf_textures/texture_path
           - Path to a texture image.
           - string
         * - cf_switch_to_emission_shader
           - Adds the Emission shader to the target material, sets it's 'color' and 'strength' values, connects it to
-            the Material Output node. 
+            the Material Output node.
           - dict
         * - cf_switch_to_emission_shader/color
-          - [R, G, B, A] vector representing the color of the emitted light. 
+          - [R, G, B, A] vector representing the color of the emitted light.
           - mathutils.Vector
         * - cf_switch_to_emission_shader/strength
           - Strength of the emitted light. Must be >0.
@@ -375,13 +376,15 @@ class MaterialManipulator(Module):
 
         op_mode = self.config.get_string("mode", "once_for_each")
 
+
+
         if not materials:
             warnings.warn("Warning: No materials selected inside of the MaterialManipulator")
             return
 
         if op_mode == "once_for_all":
             # get values to set if they are to be set/sampled once for all selected materials
-            params = self._get_the_set_params(params_conf)
+            randomisation_mode = self._choose_randomisations(params_conf)
 
         for material in materials:
             if not material.use_nodes:
@@ -389,89 +392,190 @@ class MaterialManipulator(Module):
 
             if op_mode == "once_for_each":
                 # get values to set if they are to be set/sampled anew for each selected entity
-                params = self._get_the_set_params(params_conf)
+                randomisation_mode = self._choose_randomisations(params_conf)
 
-            for key, value in params.items():
+                if (randomisation_mode["type" ] == "realistic"):
+                    pass
+                elif (randomisation_mode["type"] == "realistic_random"):
+                    pass
+                elif (randomisation_mode["type" ] == "image_random"):
+                    #Maybe also have a displacement image
+                    #check load texture and set texture
+                    pass
+                elif (randomisation_mode["type"] == "monochrome_random"):
+                    self._randomise_parameters(material, randomisation_mode['chosen_parameters'], params_conf)
+                else:
+                    raise Exception('Not recognised randomisation mode')
 
-                # used so we don't modify original key when having more than one material
-                key_copy = key
 
-                requested_cf = False
-                if key.startswith('cf_'):
-                    requested_cf = True
-                    key_copy = key[3:]
 
-                # if an attribute with such name exists for this entity
-                if key_copy == "color_link_to_displacement" and requested_cf:
-                    MaterialManipulator._link_color_to_displacement_for_mat(material, value)
-                elif key_copy == "change_to_vertex_color" and requested_cf:
-                    MaterialManipulator._map_vertex_color(material, value)
-                elif key_copy == "textures" and requested_cf:
-                    loaded_textures = self._load_textures(value)
-                    self._set_textures(loaded_textures, material)
-                elif key_copy == "switch_to_emission_shader" and requested_cf:
-                    self._switch_to_emission_shader(material, value)
-                elif key_copy == "infuse_texture" and requested_cf:
-                    MaterialManipulator._infuse_texture(material, value)
-                elif key_copy == "infuse_material" and requested_cf:
-                    MaterialManipulator._infuse_material(material, value)
-                elif key_copy == "add_dust" and requested_cf:
-                    self._add_dust_to_material(material, value)
-                elif "set_" in key_copy and requested_cf:
-                    # sets the value of the principled shader
-                    self._op_principled_shader_value(material, key_copy[len("set_"):], value, "set")
-                elif "add_" in key_copy and requested_cf:
-                    # sets the value of the principled shader
-                    self._op_principled_shader_value(material, key_copy[len("add_"):], value, "add")
-                elif hasattr(material, key_copy):
-                    # set the value
-                    setattr(material, key_copy, value)
+    def _randomise_parameters(self,material, chosen_params, params_conf):
 
-    def _get_the_set_params(self, params_conf):
+        number_of_samples = params_conf.get_int("number_of_samples", 1)
+
+        for p in chosen_params:
+            if(p =='base_color'):
+                key = 'base_color'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_list('base_color_min',[0.,0.,0.,1.] )
+                max = params_conf.get_list('base_color_max',[1.,1.,1.,1.] )
+                value = np.random.uniform(min,max, size=(number_of_samples,4)).squeeze()
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+            elif(p == 'metallic'):
+                key = 'metallic'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('metallic_min', 0.)
+                max = params_conf.get_float('metallic_max',1.)
+                value = np.random.uniform(min, max, size = (number_of_samples,)).squeeze()
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+            elif (p == 'roughness'):
+                key = 'roughness'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('roughness_min', 0.)
+                max = params_conf.get_float('roughness_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+            elif (p == 'specular'):
+                key = 'specular'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('specular_min', 0.)
+                max = params_conf.get_float('specular_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+                key = 'specular_tint'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('specular_tint_min', 0.)
+                max = params_conf.get_float('specular_tint_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+            elif (p == 'anisotropic'):
+                key = 'anisotropic'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('anisotropic_min', 0.)
+                max = params_conf.get_float('anisotropic_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+                key = 'anisotropic_rotation'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('anisotropic_rotation_min', 0.)
+                max = params_conf.get_float('anisotropic_rotation_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+            elif (p == 'sheen'):
+                key = 'sheen'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('sheen_min', 0.)
+                max = params_conf.get_float('sheen_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,))
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+                key = 'sheen_tint'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('sheen_tint_min', 0.)
+                max = params_conf.get_float('sheen_tint_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,))
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+            elif (p == 'clearcoat'):
+                key = 'clearcoat'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('clearcoat_min', 0.)
+                max = params_conf.get_float('clearcoat_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,))
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+
+                key = 'clearcoat_roughness'
+                key += '_keyframe' if number_of_samples>1 else ''
+                min = params_conf.get_float('clearcoat_roughness_min', 0.03)
+                max = params_conf.get_float('clearcoat_roughness_max', 1.)
+                value = np.random.uniform(min, max, size=(number_of_samples,))
+                self._op_principled_shader_value(material, key, value.tolist(), "set")
+            else:
+                raise Exception('wrong parameter name : {}'.format(p))
+
+    def _choose_randomisations(self, params_conf):
         """ Extracts actual values to set from a Config object.
 
         :param params_conf: Object with all user-defined data. Type: Config.
         :return: Parameters to set as {name of the parameter: it's value} pairs. Type: dict.
         """
-        params = {}
-        for key in params_conf.data.keys():
-            result = None
-            if key == "cf_color_link_to_displacement":
-                result = params_conf.get_float(key)
-            elif key == "cf_change_to_vertex_color":
-                result = params_conf.get_string(key)
-            elif key == "cf_textures":
-                result = {}
-                paths_conf = Config(params_conf.get_raw_dict(key))
-                for text_key in paths_conf.data.keys():
-                    text_path = paths_conf.get_string(text_key)
-                    result.update({text_key: text_path})
-            elif key == "cf_switch_to_emission_shader":
-                result = {}
-                emission_conf = Config(params_conf.get_raw_dict(key))
-                for emission_key in emission_conf.data.keys():
-                    if emission_key == "color":
-                        attr_val = emission_conf.get_list("color", [1, 1, 1, 1])
-                    elif emission_key == "strength":
-                        attr_val = emission_conf.get_float("strength", 1.0)
-                    else:
-                        attr_val = emission_conf.get_raw_value(emission_key)
+        randomisation_mode = {}
 
-                    result.update({emission_key: attr_val})
-            elif key == "cf_infuse_texture":
-                result = Config(params_conf.get_raw_dict(key))
-            elif key == "cf_infuse_material":
-                result = Config(params_conf.get_raw_dict(key))
-            elif key == "cf_add_dust":
-                result = params_conf.get_raw_dict(key)
-            elif "cf_set_" in key or "cf_add_" in key:
-                result = params_conf.get_raw_value(key)
-            else:
-                result = params_conf.get_raw_value(key)
+        parameters_to_randomise = params_conf.get_list('parameters_to_randomise', ['base_color'])
+        randomisation_probabilitites = params_conf.get_list('randomisation_probabilities', [1.0]*len(parameters_to_randomise))
+        assert len(parameters_to_randomise) ==len(randomisation_probabilitites), 'Probabilities and parameters to randomise do not match'
 
-            params.update({key: result})
+        chosen_parameters = []
+        for key,p in zip(parameters_to_randomise,randomisation_probabilitites):
+            r = np.random.uniform()
+            if(r<p):
+                chosen_parameters.append(key)
 
-        return params
+        randomisation_mode['chosen_parameters'] = chosen_parameters
+
+        types = params_conf.get_list('randomisation_types', ['monochrome_randomisation'])
+        type = params_conf.get_list('randomisation_type_probabilities', [1/len(types)]*len(types))
+
+
+        if (isinstance(type, list)):
+            assert sum(type) == 1.0, "Randomisation mode probabilities need to sum to 1."
+            assert len(type) == len(types), 'Randomisation types have to be the same number as the type probs'
+
+            cum_prob = np.cumsum(type)
+            r = np.random.uniform()
+            sample = np.argmax(cum_prob>r).squeeze()
+            type = types[sample]
+
+        randomisation_mode['type'] = type
+
+
+
+
+
+    # for key in params_conf.data.keys():
+    #         result = None
+    #         if key == "cf_color_link_to_displacement":
+    #             result = params_conf.get_float(key)
+    #         elif key == "cf_change_to_vertex_color":
+    #             result = params_conf.get_string(key)
+    #         elif key == "cf_textures":
+    #             result = {}
+    #             paths_conf = Config(params_conf.get_raw_dict(key))
+    #             for text_key in paths_conf.data.keys():
+    #                 text_path = paths_conf.get_string(text_key)
+    #                 result.update({text_key: text_path})
+    #         elif key == "cf_switch_to_emission_shader":
+    #             result = {}
+    #             emission_conf = Config(params_conf.get_raw_dict(key))
+    #             for emission_key in emission_conf.data.keys():
+    #                 if emission_key == "color":
+    #                     attr_val = emission_conf.get_list("color", [1, 1, 1, 1])
+    #                 elif emission_key == "strength":
+    #                     attr_val = emission_conf.get_float("strength", 1.0)
+    #                 else:
+    #                     attr_val = emission_conf.get_raw_value(emission_key)
+    #
+    #                 result.update({emission_key: attr_val})
+    #         elif key == "cf_infuse_texture":
+    #             result = Config(params_conf.get_raw_dict(key))
+    #         elif key == "cf_infuse_material":
+    #             result = Config(params_conf.get_raw_dict(key))
+    #         elif key == "cf_add_dust":
+    #             result = params_conf.get_raw_dict(key)
+    #         elif "cf_set_" in key or "cf_add_" in key:
+    #             result = params_conf.get_raw_value(key)
+    #         else:
+    #             result = params_conf.get_raw_value(key)
+    #
+    #         params.update({key: result})
+
+        return randomisation_mode
 
     def _load_textures(self, text_paths):
         """ Loads textures.

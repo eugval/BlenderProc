@@ -2,6 +2,7 @@ import bpy
 
 from src.main.Module import Module
 from src.utility.Config import Config
+from mathutils import Vector
 
 
 class BasicMeshInitializer(Module):
@@ -119,8 +120,9 @@ class BasicMeshInitializer(Module):
             obj_location = mesh_conf.get_vector3d("location", [0, 0, 0])
             obj_rotation = mesh_conf.get_vector3d("rotation", [0, 0, 0])
             obj_scale = mesh_conf.get_vector3d("scale", [1, 1, 1])
+            obj_dimension = mesh_conf.get_vector3d("dimensions", [-1,-1,-1])
             new_obj = self._add_obj(obj_type)
-            self._set_attrs(new_obj, obj_name, obj_location, obj_rotation, obj_scale)
+            self._set_attrs(new_obj, obj_name, obj_location, obj_rotation, obj_scale,obj_dimension)
             if init_objs_mats:
                 self._init_material(obj_name)
 
@@ -154,7 +156,7 @@ class BasicMeshInitializer(Module):
 
         return new_obj
 
-    def _set_attrs(self, new_obj, obj_name, obj_location, obj_rotation, obj_scale):
+    def _set_attrs(self, new_obj, obj_name, obj_location, obj_rotation, obj_scale, obj_dimensions):
         """ Sets the attribute values of the added object.
 
         :param new_obj: New object to modify. Type: bpy.types.Object.
@@ -162,11 +164,17 @@ class BasicMeshInitializer(Module):
         :param obj_location: XYZ location of the object. Type: mathutils.Vector.
         :param obj_rotation: Rotation (3 Euler angles) of the object. Type: mathutils.Vector.
         :param obj_scale: Scale of the object. Type: mathutils.Vector.
+        :param obj_scale: dimensions of the object. Type: mathutils.Vector.
         """
         new_obj.name = obj_name
         new_obj.location = obj_location
         new_obj.rotation_euler = obj_rotation
-        new_obj.scale = obj_scale
+        if(not any(i<0 for i in obj_dimensions)):
+            old_dimensions = new_obj.dimensions
+            scale =  Vector(x / y if y >0 else x for x, y in zip(obj_dimensions, old_dimensions))
+            new_obj.scale = scale
+        else:
+            new_obj.scale = obj_scale
 
     def _init_material(self, obj_name):
         """ Adds a new default material and assigns it to the added mesh object.

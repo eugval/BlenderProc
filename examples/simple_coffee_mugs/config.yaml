@@ -25,16 +25,20 @@
         }
       }
     },
+
+
     {
         "module": "loader.ModelNetLoader",
         "config": {
           "data_path": "<args:1>",
-          #"model_name": "cup_0013", #03797390
-          "categories": [ "bathtub", "cup", "bookshelf", "bottle",
-                         "bowl","bench","bookshelf",
-                         "chair", "cone","desk","flower_pot","glass_box", "plant", "monitor",
-                         "guitar", "keyboard",
-                          "lamp","laptop","radio","vase","xbox",], #03797390
+#          "model_name": "cup_0013", #03797390
+          "category": "cup",
+#          "model_name": "desk_0043", #03797390
+#          "categories": [ "bathtub", "cup", "bookshelf", "bottle",
+#                         "bowl","bench","bookshelf",
+#                         "chair", "cone","flower_pot","glass_box", "plant", "monitor",
+#                         "guitar", "keyboard",
+#                          "lamp","laptop","radio","vase","xbox",], #03797390
            "scale_path": "./examples/MultiObj/per_category_scale.json",
           "train": True,
           "samples" : 1,
@@ -54,37 +58,39 @@
         {
           "type": "plane",
           "name": "ground_plane0",
-          "scale": [2, 2, 1],
+         "scale": [3, 3, 1],
+        #  "dimensions":[5.0,5.0,0]
         },
         {
           "type": "plane",
           "name": "ground_plane1",
-          "scale": [2, 2, 1],
-          "location": [0, -2, 2],
+          "scale": [3, 3, 1],
+          "location": [0, -3, 3],
           "rotation": [-1.570796, 0, 0], # switch the sign to turn the normals to the outside
 
         },
         {
           "type": "plane",
           "name": "ground_plane2",
-          "scale": [2, 2, 1],
-          "location": [0, 2, 2],
+         "scale": [3, 3, 1],
+          "location": [0, 3, 3],
           "rotation": [1.570796, 0, 0],
+
 
         },
         {
           "type": "plane",
           "name": "ground_plane4",
-          "scale": [2, 2, 1],
-          "location": [2, 0, 2],
+          "scale": [3, 3, 1],
+          "location": [3, 0, 3],
           "rotation": [0, -1.570796, 0],
 
         },
         {
           "type": "plane",
           "name": "ground_plane5",
-          "scale": [2, 2, 1],
-          "location": [-2, 0, 2],
+          "scale": [3, 3, 1],
+          "location": [-3, 0, 3],
           "rotation": [0, 1.570796, 0],
 
         },
@@ -92,11 +98,13 @@
           "type": "plane",
           "name": "light_plane",
           "location": [0, 0, 10],
-          "scale": [3, 3, 1],
+          "scale": [4,4, 1],
         }
         ]
       }
     },
+
+
     {
       "module": "manipulators.EntityManipulator",
       "config": {
@@ -107,10 +115,12 @@
           }
         },
         "cp_physics": False,
-        "cp_category_id": 333,
         "cp_manip_object":False,
       }
     },
+
+
+
     {
       "module": "manipulators.MaterialManipulator",
       "config": {
@@ -121,20 +131,58 @@
           }
         },
         "cf_switch_to_emission_shader": {
-          "color": {
+#           "color": [0.5,0.5,1.0,1.0],
+          "color_keyframe": {
             "provider": "sampler.Color",
-            "min": [0.5, 0.5, 0.5, 1.0],
-            "max": [1.0, 1.0, 1.0, 1.0]
+            "min": [0.25, 0.25, 0.25, 1.0],
+            "max": [1.0, 1.0, 1.0, 1.0],
+            "number_of_samples":"<args:2>",
           },
-          "strength": {
+#          "strength":1.0,
+          "strength_keyframe":
+             {
             "provider": "sampler.Value",
             "type": "float",
-            "min": 3,
-            "max": 6
+            "mode": "loguniform",
+            "number_of_samples":"<args:2>",
+            "min": 0.1,
+            "max": 10
           }
         }
       }
     },
+
+
+
+    {
+      "module": "manipulators.MaterialRandomiser",
+      "config": {
+        "selector": {
+          "provider": "getter.Material",
+          "conditions": {
+            "cf_use_materials_of_objects": {
+              "provider": "getter.Entity",
+              "conditions": {
+                "cp_manip_object":True,
+              }
+            }
+          }
+        },
+        "number_of_samples": "<args:2>",
+        "parameters_to_randomise":["base_color", "roughness", "metallic", "specular", "anisotropic", "sheen", "clearcoat"],
+        "randomisation_probabilities":[1.0, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
+         "metallic_min": 0.5,
+        "anisotropic_min":0.5,
+         "clearcoat_min": 0.5,
+         "clearcoat_roughness_min": 0.5,
+        "sheen_min": 0.5,
+        "randomisation_types" : ["monochrome_random"],
+         "randomisation_type_probabilities": [1.0] ,
+        }
+      },
+
+
+
 
     {
       "module": "manipulators.MaterialManipulator",
@@ -143,95 +191,119 @@
           "provider": "getter.Material",
           "conditions": {
             "cf_use_materials_of_objects": {
-                "provider": "getter.Entity",
-                "conditions": {
-                               "cp_manip_object":True,
-                            }
+              "provider": "getter.Entity",
+              "conditions": {
+                "name": "ground_plane.*",
+              }
             }
-          }
-        },
-         "cf_set_base_color": [0.3, 0.6, 0.1, 1],
-#          "cf_set_base_color_keyframe":  {
-#            "provider": "sampler.Color",
-#            "min": [0.0, 0.0, 0.0, 1.0],
-#            "max": [1.0, 1.0, 1.0, 1.0],
-#            "number_of_samples": 10,
-#          },
-        }
-      },
+          },
 
-#    {
-#      "module": "manipulators.MaterialManipulator",
-#      "config": {
-#        "selector": {
-#          "provider": "getter.Material",
-#          "conditions": {
-#            "cf_use_materials_of_objects": {
-#              "provider": "getter.Entity",
-#              "conditions": {
-#                "name": "ground_plane.*",
-#              }
-#            }
-#          },
-#
-#        },
-#        "mode":"once_for_each",
-#        "cf_set_base_color_keyframe": [1.0, 1.0, 1.0, 1.0]
+        },
+        "mode":"once_for_each",
+        "cf_set_base_color": [1.0, 1.0, 1.0, 1.0]
 #        "cf_set_base_color_keyframe": {
 #          "provider": "sampler.Color",
 #          "min": [0., 0., 0., 1.0],
 #          "max": [1.0, 1.0, 1.0, 1.0],
-#          "number_of_samples": 10,
+#          "number_of_samples":"<args:2>",
 #        },
-#      }
-#    },
+      }
+    },
 
-
+#
 
 
     {
       "module": "lighting.LightSampler",
       "config": {
         "lights": [
+
+
         {
           "locations": {
             "provider": "sampler.Shell",
             "center": {
-                "provider": "getter.POI",
-                "selector": {
-                  "provider": "getter.Entity",
-                  "conditions": {
-                    "type": "MESH",
-                    "cp_manip_object":True
+              "provider": "getter.POI",
+              "selector": {
+                "provider": "getter.Entity",
+                "conditions": {
+                  "type": "MESH",
+                  "cp_manip_object":True
+                },
+                "random_samples":1
+              }
+            },
+            "radius_min": 0.35, # now depends on the bottom area of the box
+            "radius_max": 2.5, # this one too
+            "elevation_min":1,
+            "elevation_max":85,
+            "number_of_samples": "<args:2>"
+          },
+#          "color": [1.0,0.,0.,1.0],
+                    "colors":{
+                      "provider": "sampler.Color",
+                      "min": [0.25, 0.25, 0.25, 1.0],
+                      "max": [1.0, 1.0, 1.0, 1.0],
+                      "number_of_samples":"<args:2>",
                     },
-                  "random_samples":1
-                }
-              },
-            "radius_min":0.5, # now depends on the bottom area of the box
-            "radius_max": 1.5, # this one too
-            "elevation_min": 2,
-            "elevation_max": 89,
-            "uniform_elevation": True,
-            "number_of_samples" :10
-          },
-          "color": [1.0,1.0,1.0,1.0],
-#          "colors":{
-#            "provider": "sampler.Color",
-#            "min": [0.5, 0.5, 0.5, 1.0],
-#            "max": [1.0, 1.0, 1.0, 1.0],
-#            "number_of_samples":10,
-#          },
           "type": "POINT",
-          "energy":{
-            "provider": "sampler.Value",
-            "type": "int",
-            "min": 20,
-            "max": 250
+          #          "energy": 50,
+          "energies":
+            {
+              "number_of_samples":"<args:2>",
+              "provider": "sampler.Value",
+              "type": "int",
+              "min": 1,
+              "max": 350
+            },
+        },
+
+        {
+          "locations": {
+            "provider": "sampler.Shell",
+            "center": {
+              "provider": "getter.POI",
+              "selector": {
+                "provider": "getter.Entity",
+                "conditions": {
+                  "type": "MESH",
+                  "cp_manip_object":True
+                },
+                "random_samples":1
+              }
+            },
+            "radius_min": 0.35, # now depends on the bottom area of the box
+            "radius_max": 2.5, # this one too
+            "elevation_min":1,
+            "elevation_max":85,
+            "number_of_samples": "<args:2>"
           },
+          #          "color": [1.0,0.,0.,1.0],
+          "colors":{
+            "provider": "sampler.Color",
+            "min": [0.5, 0.5, 0.5, 1.0],
+            "max": [1.0, 1.0, 1.0, 1.0],
+            "number_of_samples":"<args:2>",
+          },
+          "type": "POINT",
+          #          "energy": 50,
+          "energies":
+            {
+              "number_of_samples":"<args:2>",
+              "provider": "sampler.Value",
+              "type": "int",
+              "min": 1,
+              "max": 300
+            },
         }
+
+
+
         ]
       }
     },
+
+
     {
       "module": "camera.CameraSampler",
       "config": {
@@ -251,7 +323,7 @@
               "type": "MESH"
             }
           },
-          "number_of_samples":10, ####CAMERA POSES
+          "number_of_samples": "<args:2>", ####CAMERA POSES
           "location": {
             "provider": "sampler.Shell",
             "center": {
@@ -267,9 +339,13 @@
             },
             "radius_min": 0.15,
             "radius_max":0.45,
+#             "radius_min": 0.45,
+#            "radius_max":0.45,
+#            "elevation_min": 89,
+
             "elevation_min": 15.0,
             "elevation_max": 89.9,
-            "uniform_elevation": True
+           # "uniform_elevation": True
           },
           "rotation": {
             "format": "look_at",
@@ -312,7 +388,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Many_classes",
+        "dataset": "test",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [

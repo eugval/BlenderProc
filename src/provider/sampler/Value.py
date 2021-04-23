@@ -75,33 +75,47 @@ class Value(Provider):
         """
         :return: Sampled value. Type: mathutils.Vector
         """
-        # get type of the value to sample
-        val_type = self.config.get_string("type")
-        mode = self.config.get_string("mode", "uniform")
-        # sample bool
-        if val_type.lower() == 'bool' or val_type.lower() == 'boolean':
-            val = bool(np.random.randint(0, 2))
-        # or sample int
-        elif val_type.lower() == 'int':
-            if mode == "uniform":
-                val_min = self.config.get_int('min')
-                val_max = self.config.get_int('max')
-                val = np.random.randint(val_min, val_max)
-            else:
-                raise Exception("Mode {} doesn't exist".format(mode))
-        # or sample float
-        elif val_type.lower() == 'float':
-            if mode == "uniform":
-                val_min = self.config.get_float('min')
-                val_max = self.config.get_float('max')
-                val = np.random.uniform(val_min, val_max)
-            elif mode == "normal":
-                mean = self.config.get_float('mean')
-                std_dev = self.config.get_float('std_dev')
-                val = np.random.normal(loc=mean, scale=std_dev)
-            else:
-                raise Exception("Mode {} doesn't exist".format(mode))
-        else:
-            raise Exception("Cannot sample this type: " + val_type)
 
-        return val
+        vals = []
+
+        number_of_samples = self.config.get_int("number_of_samples",1)
+        for _ in range(number_of_samples):
+            # get type of the value to sample
+            val_type = self.config.get_string("type")
+            mode = self.config.get_string("mode", "uniform")
+            # sample bool
+            if val_type.lower() == 'bool' or val_type.lower() == 'boolean':
+                val = bool(np.random.randint(0, 2))
+            # or sample int
+            elif val_type.lower() == 'int':
+                if mode == "uniform":
+                    val_min = self.config.get_int('min')
+                    val_max = self.config.get_int('max')
+                    val = np.random.randint(val_min, val_max)
+                else:
+                    raise Exception("Mode {} doesn't exist".format(mode))
+            # or sample float
+            elif val_type.lower() == 'float':
+                if mode == "uniform":
+                    val_min = self.config.get_float('min')
+                    val_max = self.config.get_float('max')
+                    val = np.random.uniform(val_min, val_max)
+                elif mode == "normal":
+                    mean = self.config.get_float('mean')
+                    std_dev = self.config.get_float('std_dev')
+                    val = np.random.normal(loc=mean, scale=std_dev)
+                elif mode == "loguniform":
+                    val_min = self.config.get_float('min')
+                    val_max = self.config.get_float('max')
+                    val = np.asarray(np.exp(np.random.uniform(np.log(val_min), np.log(val_max))))
+                else:
+                    raise Exception("Mode {} doesn't exist".format(mode))
+            else:
+                raise Exception("Cannot sample this type: " + val_type)
+
+            vals.append(val)
+
+        if(len(vals)==1):
+            return vals[0]
+        else:
+            return vals

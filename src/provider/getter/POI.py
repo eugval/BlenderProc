@@ -69,7 +69,12 @@ class POI(Provider):
             mean_bb_points.append(np.mean(bb_points, axis=0))
         # Query point - mean of means
         mean_bb_point = np.mean(mean_bb_points, axis=0)
-        # Closest point (from means) to query point (mean of means)
-        poi = mathutils.Vector(mean_bb_points[np.argmin(np.linalg.norm(mean_bb_points - mean_bb_point, axis=1))])
+
+        if(self.config.get_bool('use_mean', False)):
+            #Mean of means
+            return mathutils.Vector(mean_bb_point)
+        else:
+            # Closest point (from means) to query point (mean of means)
+            poi = mathutils.Vector(mean_bb_points[np.argmin(np.linalg.norm(mean_bb_points - mean_bb_point, axis=1))])
 
         return poi

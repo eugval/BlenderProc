@@ -31,7 +31,7 @@ for module in list(sys.modules.keys()):
 from src.main.Pipeline import Pipeline
 
 config_path = "examples/simple_coffee_mugs/config.yaml"
-args = [ "examples/simple_coffee_mugs/output" , " resources/ModelNet40/",
+args = [ "examples/simple_coffee_mugs/output" , " resources/ModelNet40/", 1,
         ]  # Put in here arguments to use for filling the placeholders in the config file.
 
 # Focus the 3D View, this is necessary to make undo work (otherwise undo will focus on the scripting area)
@@ -45,7 +45,7 @@ for window in bpy.context.window_manager.windows:
             break
 
 # Store temp files in the same directory for debugging
-temp_dir = "examples/OneObj/temp"
+temp_dir = "examples/simple_coffee_mugs/temp"
 
 try:
     # In this debug case the rendering is avoided, everything is executed except the final render step

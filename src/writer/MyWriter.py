@@ -325,6 +325,12 @@ class MyWriter(WriterInterface):
         # Go through all frames.
         num_new_frames = bpy.context.scene.frame_end - bpy.context.scene.frame_start
         end_frame = bpy.context.scene.frame_end if not self._avoid_rendering else bpy.context.scene.frame_start
+
+
+        ####DEBUG ###
+        # image = []
+        ######
+
         for frame_id in range(bpy.context.scene.frame_start, end_frame):
             # Activate frame.
             bpy.context.scene.frame_set(frame_id)
@@ -351,7 +357,15 @@ class MyWriter(WriterInterface):
                 raise Exception("RGB image has not been rendered.")
             image_type = '.png' if rgb_output['path'].endswith('png') else '.jpg'
             rgb_fpath = self.rgb_tpath.format(chunk_id=curr_chunk_id, im_id=curr_frame_id, im_type=image_type)
+
+
+
             shutil.copyfile(rgb_output['path'] % frame_id, rgb_fpath)
+
+            ####~DEBUG #####
+            # im =cv2.imread(rgb_fpath,-1)
+            # image.append(im)
+            ########
             #####
 
             #### DO DEPTH ###
@@ -391,6 +405,16 @@ class MyWriter(WriterInterface):
 
             else:
                 curr_frame_id += 1
+
+        #### DEBUG ####
+        # average_pixel_value = np.mean([np.mean(np.asarray(i).astype(float)) for i in image])
+        # average_pixel_std = np.std([np.mean(np.asarray(i).astype(float)) for i in image])
+        # average_in_pixel_std = np.mean([np.std(np.asarray(i).astype(float)) for i in image])
+        # print('AVERAGE_PIXEL VAL {}'.format(average_pixel_value))
+        # print('AVERAGE_PIXEL std between images {}'.format(average_pixel_std))
+        # print('AVERAGE_PIXEL std within images {}'.format(average_in_pixel_std))
+
+        #########
 
 
         #### DO CORRESPONDANCES

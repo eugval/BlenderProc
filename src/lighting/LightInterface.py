@@ -83,7 +83,7 @@ class LightInterface(Module):
                 if bpy.context.scene.frame_end < keyframe + 1:
                     bpy.context.scene.frame_end = keyframe + 1
                 light.set_color(list(color[:3]))
-                light.blender_obj.keyframe_insert(data_path='color', frame=keyframe)
+                light.blender_obj.data.keyframe_insert(data_path='color', frame=keyframe)
                 keyframe+=1
 
 
@@ -93,6 +93,6 @@ class LightInterface(Module):
                 if bpy.context.scene.frame_end < keyframe + 1:
                     bpy.context.scene.frame_end = keyframe + 1
                 light.set_energy(float(energy))
-                light.blender_obj.keyframe_insert(data_path='energy', frame=keyframe)
+                light.blender_obj.data.keyframe_insert(data_path='energy', frame=keyframe)
                 keyframe+=1
 

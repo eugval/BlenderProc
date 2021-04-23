@@ -29,64 +29,21 @@
         "module": "loader.ModelNetLoader",
         "config": {
           "data_path": "<args:1>",
-          "model_name": "cup_0012", #03797390
-          ""
+          #"model_name": "cup_0013", #03797390
+          "category": "coffee_cup", #03797390
+           "scale_path": "./examples/MultiObj/per_category_scale.json",
           "train": True,
-          "samples" : 1,
+          "samples" : 3,
           "replacement": False,
           "add_properties": {
             "cp_physics": True,
             "cp_manip_object":True,
+            "cp_fuckyou":False
           },
           "cf_set_shading": "SMOOTH"
         }
       },
-#    {
-#      "module": "loader.ShapeNetLoader",
-#      "config": {
-#        "data_path": "<args:1>",
-#        "used_synset_id": "03063599", #03797390
-#        "used_source_id": "",
-#        "add_properties": {
-#          "cp_physics": True,
-#          "cp_manip_object":True,
-#        },
-#        "cf_set_shading": "SMOOTH"
-#      }
-#    },
 
-    {
-      "module": "loader.CCMaterialLoader",
-      "config": {
-        "folder_path": "<args:2>",
-        "preload": True
-      }
-    },
-    {
-      "module": "manipulators.EntityManipulator",
-      "config": {
-        "selector": {
-          "provider": "getter.Entity",
-          "conditions": {
-            "type": "MESH"
-          }
-        },
-        "cf_add_uv_mapping":{
-                "projection":"cube",
-                "forced_recalc_of_uv_maps": True
-        },
-        "cf_randomize_materials": {
-          "randomization_level": 1,
-          "materials_to_replace_with": {
-            "provider": "getter.Material",
-            "random_samples": 1,
-            "conditions": {
-              "cp_is_cc_texture": True  # this will return one random loaded cc textures
-            }
-          }
-        },
-      }
-    },
     {
       "module": "constructor.BasicMeshInitializer",
       "config": {
@@ -175,28 +132,106 @@
         }
       }
     },
+
+    {
+      "module": "manipulators.MaterialManipulator",
+      "config": {
+        "selector": {
+          "provider": "getter.Material",
+          "conditions": {
+            "cf_use_materials_of_objects": {
+                "provider": "getter.Entity",
+                "conditions": {
+                               "cp_manip_object":True,
+                            }
+            }
+          }
+        },
+         "cf_set_base_color": [0.3, 0.6, 0.1, 1],
+#          "cf_set_base_color_keyframe":  {
+#            "provider": "sampler.Color",
+#            "min": [0.0, 0.0, 0.0, 1.0],
+#            "max": [1.0, 1.0, 1.0, 1.0],
+#            "number_of_samples": 10,
+#          },
+        }
+      },
+
 #    {
-#      "module": "manipulators.EntityManipulator",
+#      "module": "manipulators.MaterialManipulator",
 #      "config": {
 #        "selector": {
-#          "provider": "getter.Entity",
+#          "provider": "getter.Material",
 #          "conditions": {
-#            "name": "ground_plane.*"
-#          }
-#        },
-#        "mode": "once_for_each",
-#        "cf_randomize_materials": {
-#          "randomization_level": 1,
-#          "materials_to_replace_with": {
-#            "provider": "getter.Material",
-#            "random_samples": 1,
-#            "conditions": {
-#              "cp_is_cc_texture": True
+#            "cf_use_materials_of_objects": {
+#              "provider": "getter.Entity",
+#              "conditions": {
+#                "name": "ground_plane.*",
+#              }
 #            }
-#          }
-#        }
+#          },
+#
+#        },
+#        "mode":"once_for_each",
+#        "cf_set_base_color_keyframe": [1.0, 1.0, 1.0, 1.0]
+#        "cf_set_base_color_keyframe": {
+#          "provider": "sampler.Color",
+#          "min": [0., 0., 0., 1.0],
+#          "max": [1.0, 1.0, 1.0, 1.0],
+#          "number_of_samples": 10,
+#        },
 #      }
 #    },
+
+
+
+
+    {
+      "module": "lighting.LightSampler",
+      "config": {
+        "lights": [
+        {
+          "locations": {
+            "provider": "sampler.Shell",
+            "center": {
+                "provider": "getter.POI",
+                "selector": {
+                  "provider": "getter.Entity",
+                  "conditions": {
+                    #"type": "MESH",
+                    "cp_manip_object":True
+                    },
+                #  "random_samples":1
+                }
+              },
+            "radius_min":0.5, # now depends on the bottom area of the box
+            "radius_max": 1.5, # this one too
+            "elevation_min": 2,
+            "elevation_max": 89,
+            "uniform_elevation": True,
+            "number_of_samples" :10
+          },
+          "color": [1.0,1.0,1.0,1.0],
+#          "colors":{
+#            "provider": "sampler.Color",
+#            "min": [0.5, 0.5, 0.5, 1.0],
+#            "max": [1.0, 1.0, 1.0, 1.0],
+#            "number_of_samples":10,
+#          },
+          "type": "POINT",
+          "energy":{
+            "provider": "sampler.Value",
+            "type": "int",
+            "min": 20,
+            "max": 250
+          },
+        }
+        ]
+      }
+    },
+
+
+
     {
       "module": "object.OnSurfaceSampler",
       "config": {
@@ -224,11 +259,11 @@
           },
           "min_height": 1,
           "max_height": 4,
-          "face_sample_range": [0.4, 0.6],
+          "face_sample_range": [0.35, 0.65],
           "use_ray_trace_check": False,
         },
         "min_distance": 0.01,
-        "max_distance": 0.20,
+        "max_distance": 0.2,
         "rot_sampler": {
           "provider": "sampler.Uniform3d",
           "min": [0, 0, 0],
@@ -237,60 +272,14 @@
       }
     },
 
-    {
-      "module": "loader.CCMaterialLoader",
-      "config": {
-        "folder_path": "<args:2>",
-        "fill_used_empty_materials": True
-      }
-    },
 
-    {
-      "module": "lighting.LightSampler",
-      "config": {
-        "lights": [
-        {
-          "location": {
-            "provider": "sampler.Shell",
-            "center": {
-                "provider": "getter.POI",
-                "selector": {
-                  "provider": "getter.Entity",
-                  "conditions": {
-                    "type": "MESH",
-                    "cp_manip_object":True
-                    },
-                  "random_samples":1
-                }
-              },
-            "radius_min":0.5, # now depends on the bottom area of the box
-            "radius_max": 1.5, # this one too
-            "elevation_min": 2,
-            "elevation_max": 89,
-            "uniform_elevation": True
-          },
-          "color": {
-            "provider": "sampler.Color",
-            "min": [0.5, 0.5, 0.5, 1.0],
-            "max": [1.0, 1.0, 1.0, 1.0]
-          },
-          "type": "POINT",
-          "energy":{
-            "provider": "sampler.Value",
-            "type": "int",
-            "min": 150,
-            "max": 350
-          }
-        }
-        ]
-      }
-    },
+
     {
       "module": "camera.CameraSampler",
       "config": {
         "intrinsics":{
-                       "resolution_x":256,
-                       "resolution_y":256
+               "resolution_x":256,
+               "resolution_y":256
         },
         "cam_poses": [
         {
@@ -312,14 +301,15 @@
               "selector": {
                 "provider": "getter.Entity",
                 "conditions": {
-                  "type": "MESH",
+                 # "type": "MESH",
                   "cp_manip_object":True
                 },
-                "random_samples":1
-              }
+                #"random_samples":1
+              },
+              "use_mean":True,
             },
-            "radius_min": 0.15,
-            "radius_max":0.45,
+            "radius_min": 0.3,
+            "radius_max":0.55,
             "elevation_min": 15.0,
             "elevation_max": 89.9,
             "uniform_elevation": True
@@ -331,25 +321,20 @@
               "selector": {
                 "provider": "getter.Entity",
                 "conditions": {
-                  "type": "MESH",
-                  "cp_manip_object":True
+               #   "type": "MESH",
+                  "cp_manip_object":True,
+                  "cp_fuckyou" :False
 
                 },
-                "random_samples":1
-              }
+               # "random_samples":1
+              },
+              "use_mean":True,
             },
-
-            "extra_rot": {
-              "provider": "sampler.Uniform3d",
-              "max": [0.2618, 0.2618, 0.7854],
-              "min": [-0.2618, -0.2618,-0.7854]
-                          }
-#            "inplane_rot": {
-#              "provider": "sampler.Value",
-#              "type": "float",
-#              "min": -0.7854,
-#              "max": 0.7854
-#            }
+#            "extra_rot": {
+#              "provider": "sampler.Uniform3d",
+#              "max": [0.2618, 0.2618, 0.7854],
+#              "min": [-0.2618, -0.2618,-0.7854]
+#              }
           }
         }
         ]
@@ -372,7 +357,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Single_colour_single_cup",
+        "dataset": "Test_multiple_coffe_cups",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [
@@ -385,41 +370,3 @@
   ]
 }
 
-
-#
-#
-#
-#
-#
-#
-##    {
-##      "module": "manipulators.MaterialManipulator",
-##      "config": {
-##        "selector": {
-##          "provider": "getter.Material",
-##          "conditions": [
-##          {
-##            "name": ".*"
-##          }
-##          ]
-##        },
-##        "cf_set_base_color": {
-##          "provider": "sampler.Color",
-##          "grey": True,
-##          "min": [0.25, 0.25, 0.25, 1],
-##          "max": [1, 1, 1, 1]
-##        },
-##        "cf_set_specular": {
-##          "provider": "sampler.Value",
-##          "type": "float",
-##          "min": 0.0,
-##          "max": 1.0
-##        },
-##        "cf_set_roughness": {
-##          "provider": "sampler.Value",
-##          "type": "float",
-##          "min": 0.0,
-##          "max": 1.0
-##        }
-##      }
-##    },
