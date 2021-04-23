@@ -388,7 +388,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "test",
+        "dataset": "Monochrome_randomisation",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [
