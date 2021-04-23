@@ -423,7 +423,7 @@ class MaterialRandomiser(Module):
 
                         loaded_texture = self._load_textures({'displacement': selected_texture_path})
                         displacement_multiplier_min = params_conf.get_float('displacement_multiplier_min', 0.001)
-                        displacement_multiplier_max = params_conf.get_float('displacement_multiplier_max',0.02)
+                        displacement_multiplier_max = params_conf.get_float('displacement_multiplier_max',0.01)
 
                         displacement_multiplier = np.asarray(np.exp(np.random.uniform(np.log(displacement_multiplier_min), np.log(displacement_multiplier_max))))
                         self._link_specific_color_to_displacement_for_mat(material,loaded_texture['displacement'],displacement_multiplier)

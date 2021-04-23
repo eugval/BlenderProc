@@ -197,6 +197,7 @@
          "clearcoat_roughness_min": 0.5,
         "sheen_min": 0.5,
          "keep_base_color":True,
+        "displacement_probability": 0.5,
         "randomisation_types" : ["image_random"],
          "randomisation_type_probabilities": [1.0] ,
         }
