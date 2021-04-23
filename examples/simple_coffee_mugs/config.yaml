@@ -190,7 +190,7 @@
         },
         "number_of_samples": "<args:2>",
         "parameters_to_randomise":["base_color", "roughness", "metallic", "specular", "anisotropic", "sheen", "clearcoat"],
-        "randomisation_probabilities":[0.25, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
+        "randomisation_probabilities":[0.4, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
          "metallic_min": 0.5,
         "anisotropic_min":0.5,
          "clearcoat_min": 0.5,
