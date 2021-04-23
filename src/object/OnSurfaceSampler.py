@@ -194,7 +194,7 @@ class OnSurfaceSampler(Module):
                     break
 
                 # Add a tiny displacement to make sure it is above surface
-                obj.location += mathutils.Vector([0.0,0.0,0.0002])
+                obj.location += mathutils.Vector([0.0,0.0,0.0003])
 
                 if not placed_successfully:
                     print("Giving up on {}, deleting...".format(obj.name))
