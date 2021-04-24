@@ -44,7 +44,7 @@
 #                         "guitar", "keyboard",
 #                          "lamp","laptop","radio","vase","xbox",], #03797390
            "scale_path": "./examples/MultiObj/per_category_scale.json",
-          "train": True,
+          "train": False,
           "samples" : 1,
           "replacement": False,
           "add_properties": {
@@ -190,7 +190,7 @@
         },
         "number_of_samples": "<args:2>",
         "parameters_to_randomise":["base_color", "roughness", "metallic", "specular", "anisotropic", "sheen", "clearcoat"],
-        "randomisation_probabilities":[0.4, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
+        "randomisation_probabilities":[1.0, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
          "metallic_min": 0.5,
         "anisotropic_min":0.5,
          "clearcoat_min": 0.5,
@@ -198,7 +198,7 @@
         "sheen_min": 0.5,
          "keep_base_color":True,
         "displacement_probability": 0.5,
-        "randomisation_types" : ["image_random"],
+        "randomisation_types" : ["monochrome_random"],
          "randomisation_type_probabilities": [1.0] ,
         }
       },
@@ -386,7 +386,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Image_randomisation",
+        "dataset": "Test_Monochrome_Randomization",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [
