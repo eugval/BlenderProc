@@ -21,10 +21,10 @@
         "global": {
           "output_dir": "<args:0>",
           "run_number":0,
-            "color_textures_path":'./resources/textures',
-            "gray_textures_path":'./resources/gray_textures',
-            "cc_textures_path":'./resources/cctextures',
-            "haven_textures_path":'./resources/haven',
+            "color_textures_path":'~/Projects/BlenderProc/resources/textures',
+            "gray_textures_path":'~/Projects/BlenderProc/resources/gray_textures',
+            "cc_textures_path":'~/Projects/BlenderProc/resources/cctextures',
+            "haven_textures_path":'~/Projects/BlenderProc/resources/haven',
          # "sys_paths": ["<args:2>"]
         }
       }
