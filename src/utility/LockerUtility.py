@@ -8,6 +8,9 @@ class Locker:
             current_path = os.path.dirname(os.path.realpath(__file__))
             lockfile_path = os.path.join(current_path,'../../lockfile/lockfile.lck')
 
+        if(os.path.isdir(lockfile_path)):
+            lockfile_path = os.path.join(lockfile_path, 'lockfile.lck')
+
         if(not os.path.exists(lockfile_path)):
             f = open(lockfile_path,'a+')
             f.close()

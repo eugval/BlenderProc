@@ -77,9 +77,11 @@ class Shell(Provider):
             elevation_min = self.config.get_float("elevation_min")
             elevation_max = self.config.get_float("elevation_max")
 
+            az__max = np.deg2rad(self.config.get_float('azimutal_max', 360))
+
             if self.config.get_bool("uniform_elevation", False):
                 el_sampled = np.deg2rad(elevation_min + (elevation_max-elevation_min) * np.random.rand())
-                az_sampled = 2 * np.pi * np.random.rand()
+                az_sampled = az__max* np.random.rand()
                 # spherical to cartesian coordinates
                 direction_vector = np.array([np.sin(np.pi/2 - el_sampled) * np.cos(az_sampled),
                                              np.sin(np.pi/2 - el_sampled) * np.sin(az_sampled),
@@ -107,7 +109,7 @@ class Shell(Provider):
                 while np.sum((sampled_2d - center[:2])**2) <= R_rejection**2:
                     # http://extremelearning.com.au/how-to-generate-uniformly-random-points-on-n-spheres-and-n-balls/
                     r = R_sampling * np.sqrt(np.random.uniform())
-                    theta = np.random.uniform() * 2 * np.pi
+                    theta = np.random.uniform() * az__max
                     sampled_2d[0] = center[0] + r * np.cos(theta)
                     sampled_2d[1] = center[1] + r * np.sin(theta)
 

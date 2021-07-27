@@ -30,13 +30,13 @@
       }
     },
 
-
+#  Load the object of interest
     {
         "module": "loader.ModelNetLoader",
         "config": {
           "data_path": "<args:1>",
-#          "model_name": "cup_0013", #03797390
-          "category": "cup",
+          "model_name": "cup_0013", #03797390
+#          "category": "cup",
 #          "model_name": "desk_0043", #03797390
 #          "categories": [ "bathtub", "cup", "bookshelf", "bottle",
 #                         "bowl","bench","bookshelf",
@@ -44,7 +44,7 @@
 #                         "guitar", "keyboard",
 #                          "lamp","laptop","radio","vase","xbox",], #03797390
            "scale_path": "./examples/MultiObj/per_category_scale.json",
-          "train": False,
+          "train": True,
           "samples" : 1,
           "replacement": False,
           "add_properties": {
@@ -55,6 +55,8 @@
         }
       },
 
+
+#    Load the Room
     {
       "module": "constructor.BasicMeshInitializer",
       "config": {
@@ -109,22 +111,7 @@
     },
 
 
- {
-      "module": "manipulators.EntityManipulator",
-      "config": {
-        "selector": {
-          "provider": "getter.Entity",
-          "conditions": {
-            "type": "MESH"
-          }
-        },
-        "cf_add_uv_mapping":{
-                "projection":"cube",
-                "forced_recalc_of_uv_maps": True
-        }
-      }
-    },
-
+#Add properties to the room planes
     {
       "module": "manipulators.EntityManipulator",
       "config": {
@@ -141,6 +128,26 @@
 
 
 
+    #    Do UV mapping for textures
+ {
+      "module": "manipulators.EntityManipulator",
+      "config": {
+        "selector": {
+          "provider": "getter.Entity",
+          "conditions": {
+            "type": "MESH"
+          }
+        },
+        "cf_add_uv_mapping":{
+                "projection":"cube",
+                "forced_recalc_of_uv_maps": True
+        }
+      }
+    },
+
+
+
+#    Set Ambient Light
     {
       "module": "manipulators.MaterialManipulator",
       "config": {
@@ -174,49 +181,14 @@
 
 
 
-    {
-      "module": "manipulators.MaterialRandomiser",
-      "config": {
-        "selector": {
-          "provider": "getter.Material",
-          "conditions": {
-            "cf_use_materials_of_objects": {
-              "provider": "getter.Entity",
-              "conditions": {
-                "type":"MESH",
-              }
-            }
-          }
-        },
-        "number_of_samples": "<args:2>",
-        "parameters_to_randomise":["base_color", "roughness", "metallic", "specular", "anisotropic", "sheen", "clearcoat"],
-        "randomisation_probabilities":[1.0, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
-         "metallic_min": 0.5,
-        "anisotropic_min":0.5,
-         "clearcoat_min": 0.5,
-         "clearcoat_roughness_min": 0.5,
-        "sheen_min": 0.5,
-         "keep_base_color":True,
-        "displacement_probability": 0.5,
-        "randomisation_types" : ["monochrome_random"],
-         "randomisation_type_probabilities": [1.0] ,
-        }
-      },
 
-
-
-
-
-
-
-
-
+#      Set directional light
     {
       "module": "lighting.LightSampler",
       "config": {
         "lights": [
 
-
+#          First Light
         {
           "locations": {
             "provider": "sampler.Shell",
@@ -238,7 +210,7 @@
             "number_of_samples": "<args:2>"
           },
 #          "color": [1.0,0.,0.,1.0],
-                    "colors":{
+            "colors":{
                       "provider": "sampler.Color",
                       "min": [0.25, 0.25, 0.25, 1.0],
                       "max": [1.0, 1.0, 1.0, 1.0],
@@ -256,6 +228,7 @@
             },
         },
 
+#        Second Light
         {
           "locations": {
             "provider": "sampler.Shell",
@@ -302,6 +275,42 @@
     },
 
 
+
+
+
+#   Texture randomisation
+    {
+      "module": "manipulators.MaterialRandomiser",
+      "config": {
+        "selector": {
+          "provider": "getter.Material",
+          "conditions": {
+            "cf_use_materials_of_objects": {
+              "provider": "getter.Entity",
+              "conditions": {
+                "type":"MESH",
+              }
+            }
+          }
+        },
+        "number_of_samples": "<args:2>",
+        "parameters_to_randomise":["base_color", "roughness", "metallic", "specular", "anisotropic", "sheen", "clearcoat"],
+        "randomisation_probabilities":[1.0, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
+         "metallic_min": 0.5,
+        "anisotropic_min":0.5,
+         "clearcoat_min": 0.5,
+         "clearcoat_roughness_min": 0.5,
+        "sheen_min": 0.5,
+         "keep_base_color":True,
+        "displacement_probability": 0.5,
+        "randomisation_types" : ["monochrome_random"],
+         "randomisation_type_probabilities": [1.0] ,
+        }
+      },
+
+
+
+#      Sample camera positions
     {
       "module": "camera.CameraSampler",
       "config": {
@@ -341,7 +350,7 @@
 #            "radius_max":0.45,
 #            "elevation_min": 89,
 
-            "elevation_min": 15.0,
+            "elevation_min": 35.0,
             "elevation_max": 89.9,
            # "uniform_elevation": True
           },
@@ -386,7 +395,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Test_Monochrome_Randomization",
+        "dataset": "Single_mug_DR_colour_texture_10k",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [

@@ -6,6 +6,7 @@ import random
 import glob
 import bpy
 import json
+import numpy as np
 
 class ModelNetLoaderModule(LoaderInterface):
     """ Just imports the objects for the given file path
@@ -157,7 +158,9 @@ class ModelNetLoaderModule(LoaderInterface):
         bpy.ops.object.select_all(action='DESELECT')
         for obj in loaded_objects:
             category = obj.get_cp("category_id")
-            if(category_scale_dict is None):
+            if(self.config.get_float("manual_scale",0.0)>0.):
+                s_value = self.config.get_float("manual_scale")
+            elif(category_scale_dict is None):
                 s_value = 1.0
             else:
                 if category in category_scale_dict:

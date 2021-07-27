@@ -6,8 +6,8 @@
 
 This example explains the `RandomRoomConstructor`. This module can build random rooms and place objects loaded from other modules inside of it.
 
-This current example uses the `CCMaterialLoader`. So download the textures from cc_textures we provide a script [here](../../scripts/download_cc_textures.py).
-It also uses the `IkeaLoader`, for that please see the [ikea example](../ikea/README.md). 
+This current example uses the `CCMaterialLoader`. So download the textures from cc_textures we provide a script [here](../../../scripts/download_cc_textures.py).
+It also uses the `IkeaLoader`, for that please see the [ikea example](../../ikea/README.md). 
 
 Both are needed to use to this example.
 
@@ -19,8 +19,8 @@ Execute in the BlenderProc main directory:
 python run.py examples/random_room_constructor/config.yaml resources/ikea resources/cctextures examples/random_room_constructor/output
 ``` 
 
-* `<PATH_TO_IKEA>`: path to the downloaded IKEA dataset, see the [scripts folder](../../scripts) for the download script. 
-* `resources/cctextures`: path to CCTextures folder, see the [scripts folder](../../scripts) for the download script.
+* `<PATH_TO_IKEA>`: path to the downloaded IKEA dataset, see the [scripts folder](../../../scripts) for the download script. 
+* `resources/cctextures`: path to CCTextures folder, see the [scripts folder](../../../scripts) for the download script.
 * `examples/random_room_constructor/output`: path of the output directory.
 
 Make sure that you have downloaded the `ikea` dataset and the `cctextures` before executing.

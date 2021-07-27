@@ -31,7 +31,7 @@ These examples introduce usage of advanced BlenderProc modules and/or of their c
 * [object_pose_sampling](object_pose_sampling/README.md): Complex use of a 6D pose sampler.
 * [on_surface_object_sampling](on_surface_object_sampling/README.md): Object pose sampling on a given surface surface.
 * [optical_flow](optical_flow/README.md): Obtaining forward/backward flow values between consecutive key frames.
-* [random_room_constructor](random_room_constructor/README.md): Generating rooms and populating them with objects.
+* [random_room_constructor](pre-made/random_room_constructor/README.md): Generating rooms and populating them with objects.
 * [semantic_segmentation](semantic_segmentation/README.md): Generating semantic segmentation labels for a given scene.
 * [stereo_matching](stereo_matching/README.md): Compute distance image using stereo matching.
 
