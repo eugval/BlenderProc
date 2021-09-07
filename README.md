@@ -1,7 +1,11 @@
 # BlenderProc
 
+[![Documentation](https://img.shields.io/badge/documentation-passing-brightgreen.svg)](https://dlr-rm.github.io/BlenderProc/)
+[![Open In Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DLR-RM/BlenderProc/blob/main/examples/basics/basic/basic_example.ipynb)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 <p align="center">
-<img src="readme.jpg" alt="Front readme image" width=500>
+<img src="images/readme.jpg" alt="Front readme image" width=500>
 </p>
 
 A procedural Blender pipeline for photorealistic training image generation.
@@ -12,7 +16,7 @@ Check out our [arXiv paper](https://arxiv.org/abs/1911.01911) (we are updating i
 
 <div align="center">
 <a href="http://www.youtube.com/watch?v=tQ59iGVnJWM">
-<img src="BlenderProcVideoImg.jpg" alt="BlenderProc video" width=550> </a>
+<img src="images/BlenderProcVideoImg.jpg" alt="BlenderProc video" width=550> </a>
 </div>
 
 BlenderProc also has a complete [documentation site](https://dlr-rm.github.io/BlenderProc).
@@ -24,6 +28,7 @@ There is also an extended introduction video to BlenderProc, it covers the basic
 * [General](#general)
 * [Functionality](#functionality)
 * [Examples](#examples)
+* [Debugging](#debugging)
 * [Source code](#source-code)
 * [Contributions](#contributions)
 * [Change log](#change-log)
@@ -41,6 +46,19 @@ python run.py config.yaml <additional arguments>
 ```
 
 This runs all modules specified in the config file in a step-by-step fashion in the configured order.
+
+BlenderProc here generates a scene, places cameras in it and renders the content. This process has to be repeated multiple times to generate a diverse dataset.
+Each run should construct a random scene to create a vast variety of different scenarios, to make the generalization to the real world easier.
+
+<p align="center">
+<img src="images/BlenderProcRerun.jpg" alt="BlenderProc rerun image" width=500>
+</p>
+
+For that reason we offer a `rerun.py` script, which does exactly this:
+```shell
+python rerun.py config.yaml <additional arguments>
+```
+Make sure that the last additional argument is the output folder, in which it will create sub folders for each run.
 
 Currently, BlenderProc officialy supports Linux and MacOS. There is also a community driven support for Windows.
 
@@ -62,14 +80,35 @@ The following modules are already implemented and ready to use:
 
 We provide a lot of [examples](examples/README.md) which explain all features in detail and should help you understand how the config files work. Exploring our examples is the best way to learn about what you can do with BlenderProc. We also provide limited support for some datasets.
 
-* [Basic scene](examples/basic/README.md): Basic example 
-* [Simple SUNCG scene](examples/suncg_basic/README.md): Loads a SUNCG scene and camera positions from file before rendering color, normal, segmentation and a distance images.
-* [SUNCG scene with camera sampling](examples/suncg_with_cam_sampling/README.md): Loads a SUNCG scene and automatically samples camera poses in every room before rendering color, normal, segmentation and a distance images.
-* [Replica dataset](examples/replica_dataset/README.md): Load a replica room, sample camera poses and render normal images.
-* [COCO annotations](examples/coco_annotations/README.md): Write COCO annotations to a .json file for selected objects in the scene.
+* [Basic scene](examples/basics/basic/README.md): Basic example, this is the ideal place to start for beginners
+* [Camera sampling](examples/basics/camera_sampling/README.md): Sampling of different camera positions inside of a shape with constraints for the rotation.
+* [Object manipluation](examples/basics/entity_manipulation/README.md): Changing various parameters of objects via selecting them in the config file.
+* [Material manipulation](examples/basics/material_manipulation/README.md): Material selecting and manipulation.
+* [Physics positioning](examples/basics/physics_positioning/README.md): Enabling simple simulated physical interactions between objects in the scene.
+* [Semantic segmentation](examples/basics/semantic_segmentation/README.md): Generating semantic segmentation labels for a given scene.
 * [BOP Challenge](README_BlenderProc4BOP.md): Generate the pose-annotated data used at the BOP Challenge 2020
+* [COCO annotations](examples/advanced/coco_annotations/README.md): Write COCO annotations to a .json file for selected objects in the scene.
 
-... And much more!
+... And much more, see our [examples](examples/README.md) for more details.
+
+## Debugging
+
+To find a bug or to understand what the pipeline is doing, it is possible to run BlenderProc from inside the Blender UI.
+To do so, just add the `--debug` flag to your blender proc command.
+For example, to start the basic example in debug mode, run:
+```
+python run.py examples/basics/basic/config.yaml examples/resources/camera_positions examples/resources/scene.obj examples/basics/basic/output --debug
+```
+
+Now the Blender UI opens up, the scripting tab is selected, the correct script is loaded and your config path and arguments are placed.
+To start the BlenderProc pipeline, one now just has to press play (see red circle in image).
+ 
+<p align="center">
+<img src="images/debug.png" alt="Front readme image" width=500>
+</p>
+
+The pipeline can be run multiple times, as in the beginning of each run the scene is cleared.
+To adjust the config arguments without restarting blender, just change line 32 in the scripting tab.
 
 ## Source Code
 
@@ -95,3 +134,9 @@ If you use BlenderProc in a research project, please cite as follows:
   year={2019}
 }
 ```
+
+---
+
+<div align="center">
+  <a href="https://www.dlr.de/EN/Home/home_node.html"><img src="images/logo.svg" hspace="3%" vspace="60px"></a>
+</div>

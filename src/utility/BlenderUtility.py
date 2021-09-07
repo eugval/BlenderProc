@@ -1,13 +1,15 @@
 from collections import defaultdict
+from src.utility.SetupUtility import SetupUtility
+SetupUtility.setup_pip(["imageio"])
 
 import bpy
 import bmesh
 import mathutils
 from mathutils import Vector
-from sys import platform
 
 import numpy as np
 import imageio
+from typing import Union
 
 from src.utility.Utility import Utility
 
@@ -157,7 +159,7 @@ def create_bvh_tree_for_object(obj):
     return obj_BVHtree
 
 
-def is_point_inside_object(obj, obj_BVHtree, point):
+def is_point_inside_object(obj, obj_BVHtree:mathutils.bvhtree.BVHTree, point: Union[Vector, np.ndarray]) -> bool:
     """ Checks whether the given point is inside the given object.
 
     This only works if the given object is watertight and has correct normals
@@ -167,6 +169,7 @@ def is_point_inside_object(obj, obj_BVHtree, point):
     :param point: The point to check
     :return: True, if the point is inside the object
     """
+    point = Vector(point)
     # Look for closest point on object
     nearest, normal, _, _ = obj_BVHtree.find_nearest(point)
     # Compute direction
@@ -322,7 +325,7 @@ def get_all_textures():
     return list(bpy.data.textures)
 
 
-def load_image(file_path, num_channels=3):
+def load_image(file_path: str, num_channels: int = 3) -> np.ndarray:
     """ Load the image at the given path returns its pixels as a numpy array.
 
     The alpha channel is neglected.
@@ -443,7 +446,7 @@ def get_node_attributes(node: bpy.types.Node) -> list:
     Returns a list of all properties identifiers if they should not be ignored
 
     :param: node: the node which attributes should be returned
-    :return list of attributes of the given node
+    :return: list of attributes of the given node
     """
 
     # all attributes that shouldn't be copied
@@ -452,7 +455,7 @@ def get_node_attributes(node: bpy.types.Node) -> list:
 
     attributes = []
     for attr in node.bl_rna.properties:
-        #check if the attribute should be copied and add it to the list of attributes to copy
+        # check if the attribute should be copied and add it to the list of attributes to copy
         if not attr.identifier in ignore_attributes and not attr.identifier.split("_")[0] == "bl":
             attributes.append(attr.identifier)
 

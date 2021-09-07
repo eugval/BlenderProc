@@ -8,6 +8,63 @@
 
 # Version History
 
+## Version 1.12.0 23th July 2021
+- switch to blender 2.93, with that textures are now stored on the GPU between different frames increasing the speed drastically
+- moved a lot of modules to the python API
+  - all camera samplers
+  - all writer classes
+  - sampler and getters
+  - surface lighting
+  - random room constructor
+- all outer API functions work now with numpy arrays instead of mathutils classes
+- regroup all examples to make them more easily accessible
+- refactoring of the LabelIdMapping class
+- sampler.Path now has a `return_all` and `random_samples` option
+- add support for the new 3D front labels and script to find them more easily in the future
+- AMASS now also supports `torch=1.8.1+cu111`, to better support modern GPUs
+- refactor download script for haven
+- added a flag to not center objects from the ShapeNet dataset
+- added a platform independent unzipping function to solve the problems on windows
+- add function to return the default_value or the connected node based on the input name of a BSDF shader node of a material
+- fix for MacOS, where the blender version was not used in prior installations, leading to the problem that users had to remove blender on their own
+- the writer now correctly writes the fov if asked
+
+## Version 1.11.1 18th May 2021
+- fix a bug on mac os, where the blender python path has changed
+- fix a bug in the BlenderLoaderModule which caused that the setting of custom properties was not successful
+
+## Version 1.11.0 11th May 2021
+- BlenderProc now can be executed via a python script (experimental, not all modules are supported yet)
+- python API extension for the following modules:
+  - the Entity & Material Manipulation
+  - the WriterUtility, Hdf5Writer, BopWriterUtility, CocoWriterUtility
+  - the PostProcessing
+  - the physic positioning, PoseSampler
+- debugging can now be done via the command line, by just typing --debug after a BlenderProc call
+- add automatic convex decomposition to speed up physics, object decompositions will be cached
+- add a jupyter notebook example for google colab
+- add a BasicEmptyInitializer module, which helps creating simple empty objects, these can be used for using a depth of field
+- add a depth_of_field option to the CameraInterface (thanks to cuteday)
+- add a hide module, so that certain objects can be hidden in a selected range of frames (thanks to Sainan Liu)
+- add an option to change the computation type via the config
+- blender 2.92 changed depth and distance once again, we use it correctly now and added an explanation
+- added a diffuse rendering mode
+- added a key frame API
+- added a default config, which can be easily changed
+- ObjectPoseSampler now can check also against only a limited set of objects
+- ObjectReplacer now stops if no objects are left to replace
+- SurfaceLighting now reuses the TextureLess material
+- preloading in CCTexture now also works perfectly for textures which use an alpha texture
+- python packages now are installed by specifying the required packages at the top of each file
+- added an example for pasting objects onto random backgrounds
+- added a flag to merge BlenderKit objects, while loading, they will be named after the blenderkit file
+- reintroduce persistent transformation scaling to improve stability
+- improve the clean up at the start of BlenderProc
+- fixed a bug in the Front3DLoader, which avoided the correct setting of the custom properties
+- fixed a bug with the once_for_all mode for the randomize materials fct.
+- add a simple rerun script to show how BlenderProc is used for creating a diverse dataset
+- switch to blender 2.92
+
 ## Version 1.10.0 24th February 2021
 - rewritten the `BlendLoader`, which is now able to only load objects of a given type, this will break existing config files as the `load_from` parameter has been replaced by `datablocks` and `obj_types`
 - the `MaterialManipulator` can now overlay/mix a texture with a selected material

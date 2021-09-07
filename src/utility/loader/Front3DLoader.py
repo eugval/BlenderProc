@@ -2,15 +2,19 @@ import json
 import os
 import warnings
 from math import radians
-from typing import List
-
+from typing import List, Mapping
 import bpy
 import mathutils
 import numpy as np
+from urllib.request import urlretrieve
 
+from src.utility.MaterialLoaderUtility import MaterialLoaderUtility
+from src.utility.LabelIdMapping import LabelIdMapping
+from src.utility.MaterialUtility import Material
 from src.utility.MeshObjectUtility import MeshObject
 from src.utility.Utility import Utility
 from src.utility.loader.ObjectLoader import ObjectLoader
+from src.utility.loader.TextureLoader import TextureLoader
 
 
 class Front3DLoader:
@@ -28,18 +32,20 @@ class Front3DLoader:
     """
 
     @staticmethod
-    def load(json_path: str, future_model_path: str, mapping: dict, ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
+    def load(json_path: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping, ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
         """ Loads the 3D-Front scene specified by the given json file.
 
         :param json_path: Path to the json file, where the house information is stored.
         :param future_model_path: Path to the models used in the 3D-Front dataset.
-        :param mapping: A dict which maps the names of the objects to ids.
+        :param front_3D_texture_path: Path to the 3D-FRONT-texture folder.
+        :param label_mapping: A dict which maps the names of the objects to ids.
         :param ceiling_light_strength: Strength of the emission shader used in the ceiling.
         :param lamp_light_strength: Strength of the emission shader used in each lamp.
         :return: The list of loaded mesh objects.
         """
         json_path = Utility.resolve_path(json_path)
         future_model_path = Utility.resolve_path(future_model_path)
+        front_3D_texture_path = Utility.resolve_path(front_3D_texture_path)
 
         if not os.path.exists(json_path):
             raise Exception("The given path does not exists: {}".format(json_path))
@@ -55,9 +61,10 @@ class Front3DLoader:
         if "scene" not in data:
             raise Exception("There is no scene data in this json file: {}".format(json_path))
 
-        created_objects = Front3DLoader._create_mesh_objects_from_file(data, ceiling_light_strength, mapping, json_path)
+        created_objects = Front3DLoader._create_mesh_objects_from_file(data, front_3D_texture_path,
+                                                                       ceiling_light_strength, label_mapping, json_path)
 
-        all_loaded_furniture = Front3DLoader._load_furniture_objs(data, future_model_path, lamp_light_strength, mapping)
+        all_loaded_furniture = Front3DLoader._load_furniture_objs(data, future_model_path, lamp_light_strength, label_mapping)
 
         created_objects += Front3DLoader._move_and_duplicate_furniture(data, all_loaded_furniture)
 
@@ -68,7 +75,52 @@ class Front3DLoader:
         return created_objects
 
     @staticmethod
-    def _create_mesh_objects_from_file(data: dict, ceiling_light_strength: float, mapping: dict, json_path: str) -> List[MeshObject]:
+    def _extract_hash_nr_for_texture(given_url: str, front_3D_texture_path: str) -> str:
+        """
+        Constructs the path of the hash folder and checks if the texture is available if not it is downloaded
+
+        :param given_url: The url of the texture
+        :param front_3D_texture_path: The path to where the texture are saved
+        :return: The hash id, which is used in the url
+        """
+        # extract the hash nr from the given url
+        hash_nr = given_url.split("/")[-2]
+        hash_folder = os.path.join(front_3D_texture_path, hash_nr)
+        if not os.path.exists(hash_folder):
+            # download the file
+            os.makedirs(hash_folder)
+            warnings.warn(f"This texture: {hash_nr} could not be found it will be downloaded.")
+            # replace https with http as ssl connection out of blender are difficult
+            urlretrieve(given_url.replace("https://", "http://"), os.path.join(hash_folder, "texture.png"))
+            if not os.path.exists(os.path.join(hash_folder, "texture.png")):
+                raise Exception(f"The texture could not be found, the following url was used: "
+                                f"{front_3D_texture_path}, this is the extracted hash: {hash_nr}, "
+                                f"given url: {given_url}")
+        return hash_folder
+
+    @staticmethod
+    def _get_used_image(hash_folder_path: str, saved_image_dict: Mapping[str, bpy.types.Texture]) -> bpy.types.Texture:
+        """
+        Returns a texture object for the given hash_folder_path, the textures are stored in the saved_image_dict,
+        to avoid that texture are loaded multiple times
+
+        :param hash_folder_path: Path to the hash folder
+        :param saved_image_dict: Dict which maps the hash_folder_paths to bpy.types.Texture
+        :return: The loaded texture bpy.types.Texture
+        """
+        if hash_folder_path in saved_image_dict:
+            ret_used_image = saved_image_dict[hash_folder_path]
+        else:
+            textures = TextureLoader.load(hash_folder_path)
+            if len(textures) != 1:
+                raise Exception(f"There is not just one texture: {len(textures)}")
+            ret_used_image = textures[0].image
+            saved_image_dict[hash_folder_path] = ret_used_image
+        return ret_used_image
+
+    @staticmethod
+    def _create_mesh_objects_from_file(data: dict, front_3D_texture_path: str, ceiling_light_strength: float,
+                                       label_mapping: LabelIdMapping, json_path: str) -> List[MeshObject]:
         """
         This creates for a given data json block all defined meshes and assigns the correct materials.
         This means that the json file contains some mesh, like walls and floors, which have to built up manually.
@@ -76,8 +128,9 @@ class Front3DLoader:
         It also already adds the lighting for the ceiling
 
         :param data: json data dir. Must contain "material" and "mesh"
+        :param front_3D_texture_path: Path to the 3D-FRONT-texture folder.
         :param ceiling_light_strength: Strength of the emission shader used in the ceiling.
-        :param mapping: A dict which maps the names of the objects to ids.
+        :param label_mapping: A dict which maps the names of the objects to ids.
         :param json_path: Path to the json file, where the house information is stored.
         :return: The list of loaded mesh objects.
         """
@@ -88,6 +141,13 @@ class Front3DLoader:
                                    "normaltexture": mat["normaltexture"], "color": mat["color"]})
 
         created_objects = []
+        # maps loaded images from image file path to bpy.type.image
+        saved_images = {}
+        saved_normal_images = {}
+        # materials based on colors to avoid recreating the same material over and over
+        used_materials_based_on_color = {}
+        # materials based on texture to avoid recreating the same material over and over
+        used_materials_based_on_texture = {}
         for mesh_data in data["mesh"]:
             # extract the obj name, which also is used as the category_id name
             used_obj_name = mesh_data["type"].strip()
@@ -97,12 +157,12 @@ class Front3DLoader:
                 warnings.warn(f"Material is not defined for {used_obj_name} in this file: {json_path}")
                 continue
             # create a new mesh
-            obj = MeshObject.create_empty(used_obj_name, used_obj_name + "_mesh")
+            obj = MeshObject.create_with_empty_mesh(used_obj_name, used_obj_name + "_mesh")
             created_objects.append(obj)
 
             # set two custom properties, first that it is a 3D_future object and second the category_id
             obj.set_cp("is_3D_future", True)
-            obj.set_cp("category_id", mapping[used_obj_name.lower()])
+            obj.set_cp("category_id", label_mapping.id_from_label(used_obj_name.lower()))
 
             # get the material uid of the current mesh data
             current_mat = mesh_data["material"]
@@ -115,38 +175,57 @@ class Front3DLoader:
             # If there should be a material used
             if used_mat:
                 if used_mat["texture"]:
-                    raise Exception("The material should use a texture, this was not implemented yet!")
-                if used_mat["normaltexture"]:
-                    raise Exception("The material should use a normal texture, this was not implemented yet!")
+                    # extract the has folder is from the url and download it if necessary
+                    hash_folder = Front3DLoader._extract_hash_nr_for_texture(used_mat["texture"], front_3D_texture_path)
+                    if hash_folder in used_materials_based_on_texture and "ceiling" not in used_obj_name.lower():
+                        mat = used_materials_based_on_texture[hash_folder]
+                        obj.add_material(mat)
+                    else:
+                        # Create a new material
+                        mat = Material.create(name=used_obj_name + "_material")
+                        principled_node = mat.get_the_one_node_with_type("BsdfPrincipled")
+                        if used_mat["color"]:
+                            principled_node.inputs["Base Color"].default_value = mathutils.Vector(used_mat["color"]) / 255.0
+
+                        used_image = Front3DLoader._get_used_image(hash_folder, saved_images)
+                        mat.set_principled_shader_value("Base Color", used_image)
+
+                        if "ceiling" in used_obj_name.lower():
+                            mat.make_emissive(ceiling_light_strength, keep_using_base_color=False, emission_color=mathutils.Vector(used_mat["color"]) / 255.0)
+
+                        if used_mat["normaltexture"]:
+                            # get the used image based on the normal texture path
+                            # extract the has folder is from the url and download it if necessary
+                            hash_folder = Front3DLoader._extract_hash_nr_for_texture(used_mat["normaltexture"],
+                                                                                     front_3D_texture_path)
+                            used_image = Front3DLoader._get_used_image(hash_folder, saved_normal_images)
+
+                            # create normal texture
+                            normal_texture = MaterialLoaderUtility.create_image_node(mat.nodes, used_image, True)
+                            normal_map = mat.nodes.new("ShaderNodeNormalMap")
+                            normal_map.inputs["Strength"].default_value = 1.0
+                            mat.links.new(normal_texture.outputs["Color"], normal_map.inputs["Color"])
+                            # connect normal texture to principled shader
+                            mat.set_principled_shader_value("Normal", normal_map.outputs["Normal"])
+
+                        obj.add_material(mat)
+                        used_materials_based_on_texture[hash_folder] = mat
                 # if there is a normal color used
-                if used_mat["color"]:
-                    # Create a new material
-                    mat = bpy.data.materials.new(name=used_obj_name + "_material")
-                    mat.use_nodes = True
-                    nodes = mat.node_tree.nodes
-                    # create a principled node and set the default color
-                    principled_node = Utility.get_the_one_node_with_type(nodes, "BsdfPrincipled")
-                    principled_node.inputs["Base Color"].default_value = mathutils.Vector(used_mat["color"]) / 255.0
-                    # if the object is a ceiling add some light output
-                    if "ceiling" in used_obj_name.lower():
-                        links = mat.node_tree.links
-                        mix_node = nodes.new(type='ShaderNodeMixShader')
-                        output = Utility.get_the_one_node_with_type(nodes, 'OutputMaterial')
-                        Utility.insert_node_instead_existing_link(links, principled_node.outputs['BSDF'],
-                                                                  mix_node.inputs[2], mix_node.outputs['Shader'],
-                                                                  output.inputs['Surface'])
-                        # The light path node returns 1, if the material is hit by a ray coming from the camera,
-                        # else it returns 0. In this way the mix shader will use the principled shader for rendering
-                        # the color of the lightbulb itself, while using the emission shader for lighting the scene.
-                        light_path_node = nodes.new(type='ShaderNodeLightPath')
-                        links.new(light_path_node.outputs['Is Camera Ray'], mix_node.inputs['Fac'])
-
-                        emission_node = nodes.new(type='ShaderNodeEmission')
-                        # use the same color for the emission light then for the ceiling itself
-                        emission_node.inputs["Color"].default_value = mathutils.Vector(used_mat["color"]) / 255.0
-                        emission_node.inputs["Strength"].default_value = ceiling_light_strength
-
-                        links.new(emission_node.outputs["Emission"], mix_node.inputs[1])
+                elif used_mat["color"]:
+                    used_hash = tuple(used_mat["color"])
+                    if used_hash in used_materials_based_on_color and "ceiling" not in used_obj_name.lower():
+                        mat = used_materials_based_on_color[used_hash]
+                    else:
+                        # Create a new material
+                        mat = Material.create(name=used_obj_name + "_material")
+                        # create a principled node and set the default color
+                        principled_node = mat.get_the_one_node_with_type("BsdfPrincipled")
+                        principled_node.inputs["Base Color"].default_value = mathutils.Vector(used_mat["color"]) / 255.0
+                        # if the object is a ceiling add some light output
+                        if "ceiling" in used_obj_name.lower():
+                            mat.make_emissive(ceiling_light_strength, keep_using_base_color=False, emission_color=mathutils.Vector(used_mat["color"]) / 255.0)
+                        else:
+                            used_materials_based_on_color[used_hash] = mat
 
                     # as this material was just created the material is just append it to the empty list
                     obj.add_material(mat)
@@ -217,7 +296,7 @@ class Front3DLoader:
         return created_objects
 
     @staticmethod
-    def _load_furniture_objs(data: dict, future_model_path: str, lamp_light_strength: float, mapping: dict) -> List[MeshObject]:
+    def _load_furniture_objs(data: dict, future_model_path: str, lamp_light_strength: float, label_mapping: LabelIdMapping) -> List[MeshObject]:
         """
         Load all furniture objects specified in the json file, these objects are stored as "raw_model.obj" in the
         3D_future_model_path. For lamp the lamp_light_strength value can be changed via the config.
@@ -225,7 +304,7 @@ class Front3DLoader:
         :param data: json data dir. Should contain "furniture"
         :param future_model_path: Path to the models used in the 3D-Front dataset.
         :param lamp_light_strength: Strength of the emission shader used in each lamp.
-        :param mapping: A dict which maps the names of the objects to ids.
+        :param label_mapping: A dict which maps the names of the objects to ids.
         :return: The list of loaded mesh objects.
         """
         # collect all loaded furniture objects
@@ -241,7 +320,15 @@ class Front3DLoader:
                 # load all objects from this .obj file
                 objs = ObjectLoader.load(filepath=obj_file)
                 # extract the name, which serves as category id
-                used_obj_name = ele["category"]
+                used_obj_name = ""
+                if "category" in ele:
+                    used_obj_name = ele["category"]
+                elif "title" in ele:
+                    used_obj_name = ele["title"]
+                    if "/" in used_obj_name:
+                        used_obj_name = used_obj_name.split("/")[0]
+                if used_obj_name == "":
+                    used_obj_name = "others"
                 for obj in objs:
                     obj.set_name(used_obj_name)
                     # add some custom properties
@@ -252,13 +339,13 @@ class Front3DLoader:
                     obj.set_cp("is_3D_future", True)
                     obj.set_cp("type", "Non-Object")  # is an non object used for the interesting score
                     # set the category id based on the used obj name
-                    obj.set_cp("category_id", mapping[used_obj_name.lower()])
+                    obj.set_cp("category_id", label_mapping.id_from_label(used_obj_name.lower()))
                     # walk over all materials
                     for mat in obj.get_materials():
-                        nodes = mat.node_tree.nodes
-                        links = mat.node_tree.links
-
-                        principled_node = Utility.get_nodes_with_type(nodes, "BsdfPrincipled")
+                        principled_node = mat.get_nodes_with_type("BsdfPrincipled")
+                        if "bed" in used_obj_name.lower() or "sofa" in used_obj_name.lower():
+                            if len(principled_node) == 1:
+                                principled_node[0].inputs["Roughness"].default_value = 0.5
                         is_lamp = "lamp" in used_obj_name.lower()
                         if len(principled_node) == 0 and is_lamp:
                             # this material has already been transformed
@@ -269,33 +356,19 @@ class Front3DLoader:
                             raise Exception("The amount of principle nodes can not be more than 1, "
                                             "for obj: {}!".format(obj.get_name()))
 
+                        # Front3d .mtl files contain emission color which make the object mistakenly emissive
+                        # => Reset the emission color
+                        principled_node.inputs["Emission"].default_value[:3] = [0, 0, 0]
+
                         # For each a texture node
-                        image_node = nodes.new(type='ShaderNodeTexImage')
+                        image_node = mat.new_node('ShaderNodeTexImage')
                         # and load the texture.png
                         base_image_path = os.path.join(folder_path, "texture.png")
                         image_node.image = bpy.data.images.load(base_image_path, check_existing=True)
-                        links.new(image_node.outputs['Color'], principled_node.inputs['Base Color'])
+                        mat.link(image_node.outputs['Color'], principled_node.inputs['Base Color'])
                         # if the object is a lamp, do the same as for the ceiling and add an emission shader
                         if is_lamp:
-                            mix_node = nodes.new(type='ShaderNodeMixShader')
-                            output = Utility.get_the_one_node_with_type(nodes, 'OutputMaterial')
-                            Utility.insert_node_instead_existing_link(links, principled_node.outputs['BSDF'],
-                                                                      mix_node.inputs[2], mix_node.outputs['Shader'],
-                                                                      output.inputs['Surface'])
-
-                            # The light path node returns 1, if the material is hit by a ray coming from the camera,
-                            # else it returns 0. In this way the mix shader will use the principled shader for
-                            # rendering the color of the lightbulb itself, while using the emission shader
-                            # for lighting the scene.
-                            lightPath_node = nodes.new(type='ShaderNodeLightPath')
-                            links.new(lightPath_node.outputs['Is Camera Ray'], mix_node.inputs['Fac'])
-
-                            emission_node = nodes.new(type='ShaderNodeEmission')
-                            lamp_light_strength = lamp_light_strength
-                            emission_node.inputs["Strength"].default_value = lamp_light_strength
-                            links.new(image_node.outputs['Color'], emission_node.inputs['Color'])
-
-                            links.new(emission_node.outputs["Emission"], mix_node.inputs[1])
+                            mat.make_emissive(lamp_light_strength)
 
                 all_objs.extend(objs)
             elif "7e101ef3-7722-4af8-90d5-7c562834fabd" in obj_file:

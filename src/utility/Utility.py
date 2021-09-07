@@ -1,12 +1,16 @@
 import os
 import math
+import csv
 import threading
 import uuid
+from typing import List, Dict, Any, Tuple
+
 import bpy
 import time
 import inspect
 import importlib
 import git
+import warnings
 
 from src.main.GlobalStorage import GlobalStorage
 from src.utility.Config import Config
@@ -111,35 +115,6 @@ class Utility:
             return None
         return repo.head.object.hexsha
 
-    @staticmethod
-    def transform_matrix_to_blender_coord_frame(matrix, source_frame):
-        """ Transforms the given homog into the blender coordinate frame.
-
-        :param matrix: The matrix to convert in form of a mathutils.Matrix.
-        :param frame_of_point: An array containing three elements, describing the axes of the coordinate frame of the \
-                               source frame. (Allowed values: "X", "Y", "Z", "-X", "-Y", "-Z")
-        :return: The converted point is in form of a mathutils.Matrix.
-        """
-        assert len(source_frame) == 3, "The specified coordinate frame has more or less than tree axes: {}".format(frame_of_point)
-        output = np.eye(4)
-        for i, axis in enumerate(source_frame):
-            axis = axis.upper()
-
-            if axis.endswith("X"):
-                output[:4,0] = matrix.col[0]
-            elif axis.endswith("Y"):
-                output[:4,1] = matrix.col[1]
-            elif axis.endswith("Z"):
-                output[:4,2] = matrix.col[2]
-            else:
-                raise Exception("Invalid axis: " + axis)
-
-            if axis.startswith("-"):
-                output[:3, i] *= -1
-
-        output[:4,3] = matrix.col[3]
-        output = Matrix(output)
-        return output
 
     @staticmethod
     def resolve_path(path):
@@ -285,6 +260,48 @@ class Utility:
         else:
             raise Exception("There is not only one node of this type: {}, there are: {}".format(node_type, len(node)))
 
+    @staticmethod
+    def read_suncg_lights_windows_materials():
+        """
+        Returns the lights dictionary and windows list which contains their respective materials
+
+        :return: dictionary of lights' and list of windows' materials
+        """
+        # Read in lights
+        lights = {}
+        # File format: <obj id> <number of lightbulb materials> <lightbulb material names> <number of lampshade materials> <lampshade material names>
+        with open(Utility.resolve_path(os.path.join('resources', "suncg", "light_geometry_compact.txt"))) as f:
+            lines = f.readlines()
+            for row in lines:
+                row = row.strip().split()
+                lights[row[0]] = [[], []]
+
+                index = 1
+
+                # Read in lightbulb materials
+                number = int(row[index])
+                index += 1
+                for i in range(number):
+                    lights[row[0]][0].append(row[index])
+                    index += 1
+
+                # Read in lampshade materials
+                number = int(row[index])
+                index += 1
+                for i in range(number):
+                    lights[row[0]][1].append(row[index])
+                    index += 1
+
+        # Read in windows
+        windows = []
+        with open(Utility.resolve_path(os.path.join('resources','suncg','ModelCategoryMapping.csv')), 'r') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                if row["coarse_grained_class"] == "window":
+                    windows.append(row["model_id"])
+
+        return lights, windows
+
     class BlockStopWatch:
         """ Calls a print statement to mark the start and end of this block and also measures execution time.
 
@@ -331,8 +348,20 @@ class Utility:
         :param parameters: A dict containing the parameters that should be used.
         :return: The constructed provider.
         """
-        # Import class from src.utility
-        module_class = getattr(importlib.import_module("src.provider." + name), name.split(".")[-1])
+        module_class = None
+        for suffix in ["Module", ""]:
+            try:
+                # Import class from src.utility
+                module_class = getattr(importlib.import_module("src.provider." + name + suffix), name.split(".")[-1] + suffix)
+                break
+            except ModuleNotFoundError:
+                # Try next suffix
+                continue
+
+        # Throw an error if no module/class with the specified name + any suffix has been found
+        if module_class is None:
+            raise Exception("The module src.provider." + name + " was not found!")
+
         # Build configuration
         config = Config(parameters)
         # Construct provider
@@ -370,7 +399,7 @@ class Utility:
         return Utility.build_provider(config.get_string("provider"), parameters)
 
     @staticmethod
-    def generate_equidistant_values(num, space_size_per_dimension):
+    def generate_equidistant_values(num: int, space_size_per_dimension: int) -> Tuple[List[List[int]], int]:
         """ This function generates N equidistant values in a 3-dim space and returns num of them.
 
         Every dimension of the space is limited by [0, K], where K is the given space_size_per_dimension.
@@ -389,7 +418,8 @@ class Utility:
         while num_splits_per_dimension ** 3 < num:
             num_splits_per_dimension += 1
 
-        # Calc the side length of a block. We do a integer division here, s.t. we get blocks with the exact same size, even though we are then not using the full space of [0, 255] ** 3
+        # Calc the side length of a block. We do a integer division here, s.t. we get blocks with the exact same size,
+        # even though we are then not using the full space of [0, 255] ** 3
         block_length = space_size_per_dimension // num_splits_per_dimension
 
         # Calculate the center of each block and use them as equidistant values
@@ -465,12 +495,23 @@ class Utility:
         :param key: The output key to look for.
         :return: The dict containing all information registered for that output. If no output with the given key exists, None is returned.
         """
-        if GlobalStorage.is_in_storage("output"):
-            for output in GlobalStorage.get("output"):
-                if output["key"] == key:
-                    return output
+        for output in Utility.get_registered_outputs():
+            if output["key"] == key:
+                return output
 
         return None
+
+    @staticmethod
+    def get_registered_outputs() -> List[Dict[str, Any]]:
+        """ Returns a list of outputs which were registered.
+
+        :return: A list of dicts containing all information registered for the outputs. 
+        """
+        outputs = []
+        if GlobalStorage.is_in_storage("output"):
+            outputs = GlobalStorage.get("output")
+        
+        return outputs
 
     @staticmethod
     def output_already_registered(output, output_list):

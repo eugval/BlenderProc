@@ -7,7 +7,6 @@ from typing import List
 
 import bpy
 
-from src.utility.LabelIdMapping import LabelIdMapping
 from src.utility.MeshObjectUtility import MeshObject
 from src.utility.Utility import Utility
 from src.utility.loader.ObjectLoader import ObjectLoader
@@ -17,20 +16,20 @@ import numpy as np
 class ShapeNetLoader:
 
     @staticmethod
-    def load(data_path: str, used_synset_id: str, used_source_id: str = "", samples = 1, replacement = False) -> List[MeshObject]:
+
+
+    def load(data_path: str, used_synset_id: str, used_source_id: str = "", move_object_origin: bool = True, samples = 1, replacement = False,) -> List[MeshObject]:
         """ This loads an object from ShapeNet based on the given synset_id, which specifies the category of objects to use.
 
         From these objects one is randomly sampled and loaded.
-
-        Finally it sets all objects to have a category_id corresponding to the void class,
-        so it wouldn't trigger an exception in the SegMapRenderer.
 
         Todo: not good:
         Note: if this module is used with another loader that loads objects with semantic mapping, make sure the other module is loaded first in the config file.
 
         :param data_path: The path to the ShapeNetCore.v2 folder.
         :param used_synset_id: The synset id for example: '02691156', check the data_path folder for more ids.
-        :param used_source_id: object identifier of the a particular ShapeNet category, see inside any ShapeNet category for identifiers
+        :param used_source_id: Object identifier of the a particular ShapeNet category, see inside any ShapeNet category for identifiers
+        :param move_object_origin: Moves the object center to the bottom of the bounding box in Z direction and also in the middle of the X and Y plane, this does not change the `.location` of the object. Default: True
         :return: The list of loaded mesh objects.
         """
         data_path = Utility.resolve_path(data_path)
@@ -56,19 +55,17 @@ class ShapeNetLoader:
 
         ShapeNetLoader._correct_materials(loaded_obj)
 
-        if "void" in LabelIdMapping.label_id_map:  # Check if using an id map
-            for obj in loaded_obj:
-                obj.set_cp("category_id", LabelIdMapping.label_id_map["void"])
-
         # removes the x axis rotation found in all ShapeNet objects, this is caused by importing .obj files
         # the object has the same pose as before, just that the rotation_euler is now [0, 0, 0]
         for obj in loaded_obj:
-            obj.remove_x_axis_rotation()
+            obj.persist_transformation_into_mesh(location=False, rotation=True, scale=False)
 
-        # move the origin of the object to the world origin and on top of the X-Y plane
-        # makes it easier to place them later on, this does not change the `.location`
-        for obj in loaded_obj:
-            obj.move_origin_to_bottom_mean_point()
+        # check if the move_to_world_origin flag is set
+        if move_object_origin:
+            # move the origin of the object to the world origin and on top of the X-Y plane
+            # makes it easier to place them later on, this does not change the `.location`
+            for obj in loaded_obj:
+                obj.move_origin_to_bottom_mean_point()
         bpy.ops.object.select_all(action='DESELECT')
 
         return loaded_obj
@@ -135,11 +132,9 @@ class ShapeNetLoader:
         """
         for obj in objects:
             for material in obj.get_materials():
-                nodes = material.node_tree.nodes
-                links = material.node_tree.links
-                texture_nodes = Utility.get_nodes_with_type(nodes, "ShaderNodeTexImage")
+                texture_nodes = material.get_nodes_with_type("ShaderNodeTexImage")
                 if texture_nodes and len(texture_nodes) > 1:
-                    principled_bsdf = Utility.get_the_one_node_with_type(nodes, "BsdfPrincipled")
+                    principled_bsdf = material.get_the_one_node_with_type("BsdfPrincipled")
                     # find the image texture node which is connect to alpha
                     node_connected_to_the_alpha = None
                     for node_links in principled_bsdf.inputs["Alpha"].links:
@@ -147,9 +142,9 @@ class ShapeNetLoader:
                             node_connected_to_the_alpha = node_links.from_node
                     # if a node was found which is connected to the alpha node, add an invert between the two
                     if node_connected_to_the_alpha is not None:
-                        invert_node = nodes.new("ShaderNodeInvert")
+                        invert_node = material.new_node("ShaderNodeInvert")
                         invert_node.inputs["Fac"].default_value = 1.0
-                        Utility.insert_node_instead_existing_link(links, node_connected_to_the_alpha.outputs["Color"],
+                        material.insert_node_instead_existing_link(node_connected_to_the_alpha.outputs["Color"],
                                                                   invert_node.inputs["Color"],
                                                                   invert_node.outputs["Color"],
                                                                   principled_bsdf.inputs["Alpha"])
