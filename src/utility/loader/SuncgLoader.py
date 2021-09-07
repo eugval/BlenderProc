@@ -8,7 +8,9 @@ import bpy
 from mathutils import Matrix
 
 from src.utility.LabelIdMapping import LabelIdMapping
+from src.utility.MaterialUtility import Material
 from src.utility.MathUtility import MathUtility
+from src.utility.EntityUtility import Entity
 from src.utility.MeshObjectUtility import MeshObject
 from src.utility.Utility import Utility
 from src.utility.loader.ObjectLoader import ObjectLoader
@@ -17,7 +19,7 @@ from typing import Tuple
 class SuncgLoader:
 
     @staticmethod
-    def load(house_path: str, suncg_dir: str) -> List[MeshObject]:
+    def load(house_path: str, label_mapping: LabelIdMapping, suncg_dir: str = None) -> List[MeshObject]:
         """ Loads a house.json file into blender.
 
         - Loads all objects files specified in the house.json file.
@@ -28,6 +30,10 @@ class SuncgLoader:
         :param suncg_dir: The path to the suncg root directory which should be used for loading objects, rooms, textures etc.
         :return: The list of loaded mesh objects.
         """
+        # If not suncg root directory has been given, determine it via the given house directory.
+        if suncg_dir is None:
+            suncg_dir = os.path.join(os.path.dirname(house_path), "../..")
+
         SuncgLoader._suncg_dir = suncg_dir
         SuncgLoader._collection_of_loaded_objs = {}
         # there are only two types of materials, textures and diffuse
@@ -36,14 +42,14 @@ class SuncgLoader:
         with open(Utility.resolve_path(house_path), "r") as f:
             config = json.load(f)
 
-        object_label_map, object_fine_grained_label_map, object_coarse_grained_label_map = SuncgLoader._read_model_category_mapping(os.path.join('resources','suncg','Better_labeling_for_NYU.csv'))
+        object_label_map, object_fine_grained_label_map, object_coarse_grained_label_map = SuncgLoader._read_model_category_mapping(os.path.join('resources', 'suncg', 'Better_labeling_for_NYU.csv'))
 
         house_id = config["id"]
         loaded_objects = []
 
         for level in config["levels"]:
             # Build empty level object which acts as a parent for all rooms on the level
-            level_obj = MeshObject.create_empty("Level#" + level["id"])
+            level_obj = Entity.create_empty("Level#" + level["id"])
             level_obj.set_cp("type", "Level")
             if "bbox" in level:
                 level_obj.set_cp("bbox", SuncgLoader._correct_bbox_frame(level["bbox"]))
@@ -70,7 +76,7 @@ class SuncgLoader:
                     if node["modelId"] in object_fine_grained_label_map:
                         metadata["fine_grained_class"] = object_fine_grained_label_map[node["modelId"]]
                         metadata["coarse_grained_class"] = object_coarse_grained_label_map[node["modelId"]]
-                        metadata["category_id"] = SuncgLoader._get_label_id(node["modelId"], object_label_map)
+                        metadata["category_id"] = label_mapping.id_from_label(object_label_map[node["modelId"]])
 
                 if "bbox" in node:
                     metadata["bbox"] = SuncgLoader._correct_bbox_frame(node["bbox"])
@@ -95,13 +101,13 @@ class SuncgLoader:
                     parent = level_obj
 
                 if node["type"] == "Room":
-                    loaded_objects += SuncgLoader._load_room(node, metadata, material_adjustments, transform, house_id, level_obj, room_per_object)
+                    loaded_objects += SuncgLoader._load_room(node, metadata, material_adjustments, transform, house_id, level_obj, room_per_object, label_mapping)
                 elif node["type"] == "Ground":
-                    loaded_objects += SuncgLoader._load_ground(node, metadata, material_adjustments, transform, house_id, parent)
+                    loaded_objects += SuncgLoader._load_ground(node, metadata, material_adjustments, transform, house_id, parent, label_mapping)
                 elif node["type"] == "Object":
                     loaded_objects += SuncgLoader._load_object(node, metadata, material_adjustments, transform, parent)
                 elif node["type"] == "Box":
-                    loaded_objects += SuncgLoader._load_box(node, material_adjustments, transform, parent)
+                    loaded_objects += SuncgLoader._load_box(node, material_adjustments, transform, parent, label_mapping)
         SuncgLoader._rename_materials()
         return loaded_objects
 
@@ -121,7 +127,7 @@ class SuncgLoader:
                     material.name = textures[0].image.name
 
     @staticmethod
-    def _load_room(node: dict, metadata: dict, material_adjustments: list, transform: Matrix, house_id: str, parent: MeshObject, room_per_object: dict) -> List[MeshObject]:
+    def _load_room(node: dict, metadata: dict, material_adjustments: list, transform: Matrix, house_id: str, parent: MeshObject, room_per_object: dict, label_mapping: LabelIdMapping) -> List[MeshObject]:
         """ Load the room specified in the given node.
 
         :param node: The node dict which contains information from house.json..
@@ -134,7 +140,7 @@ class SuncgLoader:
         :return: The list of loaded mesh objects.
         """
         # Build empty room object which acts as a parent for all objects inside
-        room_obj = MeshObject.create_empty("Room#" + node["id"])
+        room_obj = Entity.create_empty("Room#" + node["id"])
         room_obj.set_cp("type", "Room")
         room_obj.set_cp("bbox", SuncgLoader._correct_bbox_frame(node["bbox"]))
         room_obj.set_cp("roomTypes", node["roomTypes"])
@@ -148,26 +154,26 @@ class SuncgLoader:
 
         if "hideFloor" not in node or node["hideFloor"] != 1:
             metadata["type"] = "Floor"
-            metadata["category_id"] = LabelIdMapping.label_id_map["floor"]
+            metadata["category_id"] = label_mapping.id_from_label("floor")
             metadata["fine_grained_class"] = "floor"
             loaded_objects += SuncgLoader._load_obj(os.path.join(SuncgLoader._suncg_dir, "room", house_id, node["modelId"] + "f.obj"), metadata, material_adjustments, transform, room_obj)
 
         if "hideCeiling" not in node or node["hideCeiling"] != 1:
             metadata["type"] = "Ceiling"
-            metadata["category_id"] = LabelIdMapping.label_id_map["ceiling"]
+            metadata["category_id"] = label_mapping.id_from_label("ceiling")
             metadata["fine_grained_class"] = "ceiling"
             loaded_objects += SuncgLoader._load_obj(os.path.join(SuncgLoader._suncg_dir, "room", house_id, node["modelId"] + "c.obj"), metadata, material_adjustments, transform, room_obj)
 
         if "hideWalls" not in node or node["hideWalls"] != 1:
             metadata["type"] = "Wall"
-            metadata["category_id"] = LabelIdMapping.label_id_map["wall"]
+            metadata["category_id"] = label_mapping.id_from_label("wall")
             metadata["fine_grained_class"] = "wall"
             loaded_objects += SuncgLoader._load_obj(os.path.join(SuncgLoader._suncg_dir, "room", house_id, node["modelId"] + "w.obj"), metadata, material_adjustments, transform, room_obj)
 
         return loaded_objects
 
     @staticmethod
-    def _load_ground(node: dict, metadata: dict, material_adjustments: list, transform: Matrix, house_id: str, parent: MeshObject) -> List[MeshObject]:
+    def _load_ground(node: dict, metadata: dict, material_adjustments: list, transform: Matrix, house_id: str, parent: MeshObject, label_mapping: LabelIdMapping) -> List[MeshObject]:
         """ Load the ground specified in the given node.
 
         :param node: The node dict which contains information from house.json..
@@ -179,7 +185,7 @@ class SuncgLoader:
         :return: The list of loaded mesh objects.
         """
         metadata["type"] = "Ground"
-        metadata["category_id"] = LabelIdMapping.label_id_map["floor"]
+        metadata["category_id"] = label_mapping.id_from_label("floor")
         metadata["fine_grained_class"] = "ground"
         return SuncgLoader._load_obj(os.path.join(SuncgLoader._suncg_dir, "room", house_id, node["modelId"] + "f.obj"), metadata, material_adjustments, transform, parent)
 
@@ -207,12 +213,12 @@ class SuncgLoader:
         :return: The corrected bbox.
         """
         return {
-            "min": MathUtility.transform_point_to_blender_coord_frame(bbox["min"], ["X", "-Z", "Y"]),
-            "max": MathUtility.transform_point_to_blender_coord_frame(bbox["max"], ["X", "-Z", "Y"])
+            "min": MathUtility.change_coordinate_frame_of_point(bbox["min"], ["X", "-Z", "Y"]),
+            "max": MathUtility.change_coordinate_frame_of_point(bbox["max"], ["X", "-Z", "Y"])
         }
 
     @staticmethod
-    def _load_box(node: dict, material_adjustments: list, transform: Matrix, parent: MeshObject) -> List[MeshObject]:
+    def _load_box(node: dict, material_adjustments: list, transform: Matrix, parent: MeshObject, label_mapping: LabelIdMapping) -> List[MeshObject]:
         """ Creates a cube inside blender which follows the specifications of the given node.
 
         :param node: The node dict which contains information from house.json..
@@ -233,15 +239,13 @@ class SuncgLoader:
         bpy.ops.object.editmode_toggle()
 
         # Create an empty material which is filled in the next step
-        mat = bpy.data.materials.new(name="material_0")
-        mat.use_nodes = True
-        box.add_material(mat)
+        box.new_material("material_0")
 
         SuncgLoader._transform_and_colorize_object(box, material_adjustments, transform, parent)
         # set class to void
-        box.set_cp("category_id", LabelIdMapping.label_id_map["void"])
+        box.set_cp("category_id", label_mapping.id_from_label("void"))
         # Rotate cube to match objects loaded from .obj, has to be done after transformations have been applied
-        box.set_local2world_mat(Matrix.Rotation(math.radians(90), 4, "X") @ box.get_local2world_mat())
+        box.set_local2world_mat(Matrix.Rotation(math.radians(90), 4, "X") @ Matrix(box.get_local2world_mat()))
 
         return [box]
 
@@ -298,7 +302,7 @@ class SuncgLoader:
 
         for i, mat in enumerate(object.get_materials()):
             # the material name of an object contains a nr, which is mentioned in the material_adjustments
-            index = mat.name[mat.name.find("_") + 1:]
+            index = mat.get_name()[mat.get_name().find("_") + 1:]
             if "." in index:
                 index = index[:index.find(".")]
             index = int(index)
@@ -318,7 +322,7 @@ class SuncgLoader:
                 current_mats[value] = mat
 
     @staticmethod
-    def _get_type_and_value_from_mat(mat: bpy.types.Material) -> Tuple[str, str]:
+    def _get_type_and_value_from_mat(mat: Material) -> Tuple[str, str]:
         """
         Returns the type of the material -> either diffuse or with texture (there are only two in SUNCG)
 
@@ -326,20 +330,19 @@ class SuncgLoader:
         :return: mat_type, value: mat_type is either "diffuse" or "texture", the value contains either name of the \
                                  image or the color mapped to an RGB string of the values
         """
-        nodes = mat.node_tree.nodes
-        image_node = Utility.get_nodes_with_type(nodes, 'TexImage')
+        image_node = mat.get_nodes_with_type('TexImage')
         if len(image_node) == 1:
             # there is an image node -> type texture
             mat_type = "texture"
             image_node = image_node[0]
             if image_node.image is None:
-                raise Exception("The image does not have a texture for material: {}".format(mat.name))
+                raise Exception("The image does not have a texture for material: {}".format(mat.get_name()))
             value = image_node.image.name
             if "." in value:
                 value = value[:value.find(".")]
         else:
             mat_type = "diffuse"
-            principled_node = Utility.get_the_one_node_with_type(nodes, "BsdfPrincipled")
+            principled_node = mat.get_the_one_node_with_type("BsdfPrincipled")
             used_keys = list(principled_node.inputs["Base Color"].default_value)
             alpha = principled_node.inputs['Alpha'].default_value
             used_keys.append(alpha)
@@ -347,7 +350,7 @@ class SuncgLoader:
         return mat_type, value
 
     @staticmethod
-    def _recreate_material_nodes(mat: bpy.types.Material, force_texture: bool):
+    def _recreate_material_nodes(mat: Material, force_texture: bool):
         """ Remove all nodes and recreate a diffuse node, optionally with texture.
 
         This will replace all material nodes with only a diffuse and a texturing node (to speedup rendering).
@@ -355,23 +358,21 @@ class SuncgLoader:
         :param mat: The blender material
         :param force_texture: True, if there always should be a texture node created even if the material has at the moment no texture
         """
-        nodes = mat.node_tree.nodes
-        links = mat.node_tree.links
-        image_node = Utility.get_nodes_with_type(nodes, 'TexImage')
+        image_node = mat.get_nodes_with_type('TexImage')
         # if there is no image no create one
         if force_texture and len(image_node) == 0:
             # The principled BSDF node contains all imported material properties
-            principled_node = Utility.get_the_one_node_with_type(nodes, "BsdfPrincipled")
+            principled_node = mat.get_the_one_node_with_type("BsdfPrincipled")
 
-            uv_node = nodes.new(type='ShaderNodeTexCoord')
+            uv_node = mat.new_node('ShaderNodeTexCoord')
             # create an image node and link it
-            image_node = nodes.new(type='ShaderNodeTexImage')
-            links.new(uv_node.outputs['UV'], image_node.inputs['Vector'])
-            links.new(image_node.outputs['Color'], principled_node.inputs['Base Color'])
+            image_node = mat.new_node('ShaderNodeTexImage')
+            mat.link(uv_node.outputs['UV'], image_node.inputs['Vector'])
+            mat.link(image_node.outputs['Color'], principled_node.inputs['Base Color'])
 
 
     @staticmethod
-    def _adjust_material_nodes(mat: bpy.types.Material, adjustments: dict):
+    def _adjust_material_nodes(mat: Material, adjustments: dict):
         """ Adjust the material node of the given material according to the given adjustments.
 
         Textures or diffuse colors will be changed according to the given material_adjustments.
@@ -379,10 +380,9 @@ class SuncgLoader:
         :param mat: The blender material.
         :param adjustments: A dict containing a new "diffuse" color or a new "texture" path
         """
-        nodes = mat.node_tree.nodes
 
         if "diffuse" in adjustments:
-            principle_node = Utility.get_the_one_node_with_type(nodes, "BsdfPrincipled")
+            principle_node = mat.get_the_one_node_with_type("BsdfPrincipled")
             principle_node.inputs['Base Color'].default_value = Utility.hex_to_rgba(adjustments["diffuse"])
 
         if "texture" in adjustments:
@@ -394,12 +394,12 @@ class SuncgLoader:
             else:
                 image_path += ".jpg"
 
-            image_node = Utility.get_the_one_node_with_type(nodes, "ShaderNodeTexImage")
+            image_node = mat.get_the_one_node_with_type("ShaderNodeTexImage")
             if os.path.exists(image_path):
                 image_node.image = bpy.data.images.load(image_path, check_existing=True)
             else:
                 print("Warning: Cannot load texture, path does not exist: {}, remove image node again".format(image_path))
-                nodes.remove(image_node)
+                mat.remove_node(image_node)
 
     @staticmethod
     def _read_model_category_mapping(path: str):
@@ -417,16 +417,5 @@ class SuncgLoader:
                 object_label_map[row["model_id"]] = row["nyuv2_40class"]
                 object_fine_grained_label_map[row["model_id"]] = row["fine_grained_class"]
                 object_coarse_grained_label_map[row["model_id"]] = row["coarse_grained_class"]
-        
-        # Use the void category as label for the world background
-        bpy.context.scene.world["category_id"] = LabelIdMapping.label_id_map["void"]
+
         return object_label_map, object_fine_grained_label_map, object_coarse_grained_label_map
-
-    @staticmethod
-    def _get_label_id(obj_id: str, object_label_map: dict) -> int:
-        """ Returns the label id for an object with the given model_id.
-
-        :param obj_id: The model_id of the object.
-        :return: The corresponding label index.
-        """
-        return LabelIdMapping.label_id_map[object_label_map[obj_id]]

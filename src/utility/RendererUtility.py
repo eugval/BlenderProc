@@ -1,12 +1,15 @@
 import os
+from typing import Union, Dict, List, Set
 
+import mathutils
+import math
 import bpy
+import numpy as np
 
 from src.main.GlobalStorage import GlobalStorage
 from src.utility.BlenderUtility import get_all_blender_mesh_objects
 from src.utility.Utility import Utility
-import mathutils
-import math
+from src.utility.WriterUtility import WriterUtility
 
 class RendererUtility:
 
@@ -23,7 +26,7 @@ class RendererUtility:
         bpy.context.scene.cycles.debug_bvh_type = "STATIC_BVH"
         bpy.context.scene.cycles.debug_use_spatial_splits = True
         # Setting use_persistent_data to True makes the rendering getting slower and slower (probably a blender bug)
-        bpy.context.scene.render.use_persistent_data = False
+        bpy.context.scene.render.use_persistent_data = True
 
     @staticmethod
     def _disable_all_denoiser():
@@ -56,12 +59,13 @@ class RendererUtility:
                 nodes.remove(denoiser_node)
 
     @staticmethod
-    def set_denoiser(denoiser):
+    def set_denoiser(denoiser: Union[str, None]):
         """ Enables the specified denoiser.
 
         Automatically disables all previously activated denoiser.
 
-        :param denoiser: The name of the denoiser which should be enabled. Options are "INTEL", "BLENDER" and None. If None is given, then no denoiser will be active.
+        :param denoiser: The name of the denoiser which should be enabled. Options are "INTEL", "BLENDER" and None. \
+                         If None is given, then no denoiser will be active.
         """
         # Make sure there is no denoiser active
         RendererUtility._disable_all_denoiser()
@@ -98,28 +102,39 @@ class RendererUtility:
 
 
     @staticmethod
-    def set_light_bounces(diffuse_bounces, glossy_bounces, ao_bounces_render, max_bounces, transmission_bounces, transparent_max_bounces, volume_bounces):
-        """ Sets the number of light bounces that should be used by the raytracing renderer.
+    def set_light_bounces(diffuse_bounces: int = None, glossy_bounces: int = None, ao_bounces_render: int = None, max_bounces: int = None,
+                          transmission_bounces: int = None, transparent_max_bounces: int = None, volume_bounces: int = None):
+        """ 
+        Sets the number of light bounces that should be used by the raytracing renderer. 
+        Default values are defined in DefaultConfig.py
 
         :param diffuse_bounces: Maximum number of diffuse reflection bounces, bounded by total maximum.
         :param glossy_bounces: Maximum number of glossy reflection bounces, bounded by total maximum.
-        :param ao_bounces_render: Approximate indirect light with background tinted ambient occlusion at the specified bounce, 0 disables this feature.
+        :param ao_bounces_render: Approximate indirect light with background tinted ambient occlusion at the \
+                                  specified bounce, 0 disables this feature.
         :param max_bounces: Total maximum number of bounces.
         :param transmission_bounces: Maximum number of transmission bounces, bounded by total maximum.
         :param transparent_max_bounces: Maximum number of transparent bounces.
         :param volume_bounces: Maximum number of volumetric scattering events.
         """
-        bpy.context.scene.cycles.diffuse_bounces = diffuse_bounces
-        bpy.context.scene.cycles.glossy_bounces = glossy_bounces
-        bpy.context.scene.cycles.ao_bounces_render = ao_bounces_render
-        bpy.context.scene.cycles.max_bounces = max_bounces
-        bpy.context.scene.cycles.transmission_bounces = transmission_bounces
-        bpy.context.scene.cycles.transparent_max_bounces = transparent_max_bounces
-        bpy.context.scene.cycles.volume_bounces = volume_bounces
+        if diffuse_bounces is not None:
+            bpy.context.scene.cycles.diffuse_bounces = diffuse_bounces
+        if glossy_bounces is not None:
+            bpy.context.scene.cycles.glossy_bounces = glossy_bounces
+        if ao_bounces_render is not None:
+            bpy.context.scene.cycles.ao_bounces_render = ao_bounces_render
+        if max_bounces is not None:
+            bpy.context.scene.cycles.max_bounces = max_bounces
+        if transmission_bounces is not None:
+            bpy.context.scene.cycles.transmission_bounces = transmission_bounces
+        if transparent_max_bounces is not None:
+            bpy.context.scene.cycles.transparent_max_bounces = transparent_max_bounces
+        if volume_bounces is not None:
+            bpy.context.scene.cycles.volume_bounces = volume_bounces
 
 
     @staticmethod
-    def toggle_auto_tile_size(enable):
+    def toggle_auto_tile_size(enable: bool):
         """ Enables/Disables the automatic tile size detection via the render_auto_tile_size addon.
 
         :param enable: True, if it should be enabled.
@@ -127,7 +142,7 @@ class RendererUtility:
         bpy.context.scene.ats_settings.is_enabled = enable
 
     @staticmethod
-    def set_tile_size(tile_x, tile_y):
+    def set_tile_size(tile_x: int, tile_y: int):
         """ Sets the rendering tile size.
 
         This will automatically disable the automatic tile size detection.
@@ -140,7 +155,7 @@ class RendererUtility:
         bpy.context.scene.render.tile_y = tile_y
 
     @staticmethod
-    def set_cpu_threads(num_threads):
+    def set_cpu_threads(num_threads: int):
         """ Sets the number of CPU cores to use simultaneously while rendering.
 
         :param num_threads: The number of threads to use. If 0 is given the number is automatically detected based on the cpu cores.
@@ -153,7 +168,7 @@ class RendererUtility:
             bpy.context.scene.render.threads_mode = "AUTO"
 
     @staticmethod
-    def toggle_stereo(enable):
+    def toggle_stereo(enable: bool):
         """ Enables/Disables stereoscopy.
 
         :param enable: True, if stereoscopy should be enabled.
@@ -163,7 +178,7 @@ class RendererUtility:
             bpy.context.scene.render.views_format = "STEREO_3D"
 
     @staticmethod
-    def set_simplify_subdivision_render(simplify_subdivision_render):
+    def set_simplify_subdivision_render(simplify_subdivision_render: int):
         """ Sets global maximum subdivision level during rendering to speedup rendering.
 
         :param simplify_subdivision_render: The maximum subdivision level. If 0 is given, simplification of scene is disabled.
@@ -176,7 +191,7 @@ class RendererUtility:
 
 
     @staticmethod
-    def set_adaptive_sampling(adaptive_threshold):
+    def set_adaptive_sampling(adaptive_threshold: float):
         """ Configures adaptive sampling.
 
         Adaptive sampling automatically decreases the number of samples per pixel based on estimated level of noise.
@@ -190,7 +205,7 @@ class RendererUtility:
             bpy.context.scene.cycles.use_adaptive_sampling = False
 
     @staticmethod
-    def set_samples(samples):
+    def set_samples(samples: int):
         """ Sets the number of samples to render for each pixel.
 
         :param samples: The number of samples per pixel
@@ -198,19 +213,24 @@ class RendererUtility:
         bpy.context.scene.cycles.samples = samples
 
     @staticmethod
-    def enable_distance_output(output_dir, file_prefix="distance_", output_key="distance", use_mist_as_distance=True, distance_start=0.1, distance_range=25.0, distance_falloff="LINEAR"):
+    def enable_distance_output(output_dir: Union[str, None] = None, file_prefix: str = "distance_",
+                               output_key: str = "distance", distance_start: float = 0.1, distance_range: float = 25.0,
+                               distance_falloff: str = "LINEAR"):
         """ Enables writing distance images.
 
         Distance images will be written in the form of .exr files during the next rendering.
 
-        :param output_dir: The directory to write files to.
+        :param output_dir: The directory to write files to, if this is None the temporary directory is used.
         :param file_prefix: The prefix to use for writing the files.
         :param output_key: The key to use for registering the distance output.
-        :param use_mist_as_distance: If true, the distance is sampled over several iterations, useful for motion blur or soft edges, if this is turned off, only one sample is taken to determine the depth. Default: True.
         :param distance_start: Starting distance of the distance, measured from the camera.
-        :param distance_range: Total distance in which the distance is measured. distance_end = distance_start + distance_range.
+        :param distance_range: Total distance in which the distance is measured. \
+                               distance_end = distance_start + distance_range.
         :param distance_falloff: Type of transition used to fade distance. Available: [LINEAR, QUADRATIC, INVERSE_QUADRATIC]
         """
+        if output_dir is None:
+            output_dir = Utility.get_temporary_directory()
+
         bpy.context.scene.render.use_compositing = True
         bpy.context.scene.use_nodes = True
         GlobalStorage.add("renderer_distance_end", distance_start + distance_range)
@@ -220,35 +240,21 @@ class RendererUtility:
         # Use existing render layer
         render_layer_node = Utility.get_the_one_node_with_type(tree.nodes, 'CompositorNodeRLayers')
 
-        # use either mist rendering or the z-buffer
-        # mists uses an interpolation during the sample per pixel
-        # while the z buffer only returns the closest object per pixel
-        if use_mist_as_distance:
-            bpy.context.scene.world.mist_settings.start = distance_start
-            bpy.context.scene.world.mist_settings.depth = distance_range
-            bpy.context.scene.world.mist_settings.falloff = distance_falloff
+        # Set mist pass limits
+        bpy.context.scene.world.mist_settings.start = distance_start
+        bpy.context.scene.world.mist_settings.depth = distance_range
+        bpy.context.scene.world.mist_settings.falloff = distance_falloff
 
-            bpy.context.view_layer.use_pass_mist = True  # Enable distance pass
-            # Create a mapper node to map from 0-1 to SI units
-            mapper_node = tree.nodes.new("CompositorNodeMapRange")
-            links.new(render_layer_node.outputs["Mist"], mapper_node.inputs['Value'])
-            # map the values 0-1 to range distance_start to distance_range
-            mapper_node.inputs['To Min'].default_value = distance_start
-            mapper_node.inputs['To Max'].default_value = distance_start + distance_range
-            final_output = mapper_node.outputs['Value']
-        else:
-            bpy.context.view_layer.use_pass_z = True
-            # add min and max nodes to perform the clipping to the desired range
-            min_node = tree.nodes.new("CompositorNodeMath")
-            min_node.operation = "MINIMUM"
-            min_node.inputs[1].default_value = distance_start + distance_range
-            links.new(render_layer_node.outputs["Depth"], min_node.inputs[0])
-            max_node = tree.nodes.new("CompositorNodeMath")
-            max_node.operation = "MAXIMUM"
-            max_node.inputs[1].default_value = distance_start
-            links.new(min_node.outputs["Value"], max_node.inputs[0])
-            final_output = max_node.outputs["Value"]
+        bpy.context.view_layer.use_pass_mist = True  # Enable distance pass
+        # Create a mapper node to map from 0-1 to SI units
+        mapper_node = tree.nodes.new("CompositorNodeMapRange")
+        links.new(render_layer_node.outputs["Mist"], mapper_node.inputs['Value'])
+        # map the values 0-1 to range distance_start to distance_range
+        mapper_node.inputs['To Min'].default_value = distance_start
+        mapper_node.inputs['To Max'].default_value = distance_start + distance_range
+        final_output = mapper_node.outputs['Value']
 
+        # Build output node
         output_file = tree.nodes.new("CompositorNodeOutputFile")
         output_file.base_path = output_dir
         output_file.format.file_format = "OPEN_EXR"
@@ -260,19 +266,61 @@ class RendererUtility:
         Utility.add_output_entry({
             "key": output_key,
             "path": os.path.join(output_dir, file_prefix) + "%04d" + ".exr",
-            "version": "2.0.0"
+            "version": "2.0.0",
+            "trim_redundant_channels": True
         })
 
     @staticmethod
-    def enable_normals_output(output_dir, file_prefix="normals_", output_key="normals"):
+    def enable_depth_output(output_dir, file_prefix="depth_", output_key="depth"):
+        """ Enables writing depth images.
+
+        Depth images will be written in the form of .exr files during the next rendering.
+
+        :param output_dir: The directory to write files to.
+        :param file_prefix: The prefix to use for writing the files.
+        :param output_key: The key to use for registering the depth output.
+        """
+        bpy.context.scene.render.use_compositing = True
+        bpy.context.scene.use_nodes = True
+
+        tree = bpy.context.scene.node_tree
+        links = tree.links
+        # Use existing render layer
+        render_layer_node = Utility.get_the_one_node_with_type(tree.nodes, 'CompositorNodeRLayers')
+
+        # Enable z-buffer pass
+        bpy.context.view_layer.use_pass_z = True
+
+        # Build output node
+        output_file = tree.nodes.new("CompositorNodeOutputFile")
+        output_file.base_path = output_dir
+        output_file.format.file_format = "OPEN_EXR"
+        output_file.file_slots.values()[0].path = file_prefix
+
+        # Feed the Z-Buffer output of the render layer to the input of the file IO layer
+        links.new(render_layer_node.outputs["Depth"], output_file.inputs['Image'])
+
+        Utility.add_output_entry({
+            "key": output_key,
+            "path": os.path.join(output_dir, file_prefix) + "%04d" + ".exr",
+            "version": "2.0.0",
+            "trim_redundant_channels": True
+        })
+
+    @staticmethod
+    def enable_normals_output(output_dir: Union[str, None] = None, file_prefix: str = "normals_",
+                              output_key: str = "normals"):
         """ Enables writing normal images.
 
         Normal images will be written in the form of .exr files during the next rendering.
 
-        :param output_dir: The directory to write files to.
+        :param output_dir: The directory to write files to, if this is None the temporary directory is used.
         :param file_prefix: The prefix to use for writing the files.
         :param output_key: The key to use for registering the normal output.
         """
+        if output_dir is None:
+            output_dir = Utility.get_temporary_directory()
+            
         bpy.context.scene.render.use_compositing = True
         bpy.context.scene.use_nodes = True
         tree = bpy.context.scene.node_tree
@@ -373,7 +421,38 @@ class RendererUtility:
         })
 
     @staticmethod
-    def map_file_format_to_file_ending(file_format):
+    def enable_diffuse_color_output(output_dir: str, file_prefix: str = "diffuse_", output_key: str = "diffuse"):
+        """ Enables writing diffuse color (albedo) images.
+
+        Diffuse color images will be written in the form of .png files during the next rendering.
+
+        :param output_dir: The directory to write files to.
+        :param file_prefix: The prefix to use for writing the files.
+        :param output_key: The key to use for registering the diffuse color output.
+        """
+        bpy.context.scene.render.use_compositing = True
+        bpy.context.scene.use_nodes = True
+        tree = bpy.context.scene.node_tree
+        links = tree.links
+
+        bpy.context.view_layer.use_pass_diffuse_color = True
+        render_layer_node = Utility.get_the_one_node_with_type(tree.nodes, 'CompositorNodeRLayers')
+        final_output = render_layer_node.outputs["DiffCol"]
+
+        output_file = tree.nodes.new('CompositorNodeOutputFile')
+        output_file.base_path = output_dir
+        output_file.format.file_format = "PNG"
+        output_file.file_slots.values()[0].path = file_prefix
+        links.new(final_output, output_file.inputs['Image'])
+        
+        Utility.add_output_entry({
+            "key": output_key,
+            "path": os.path.join(output_dir, file_prefix) + "%04d" + ".png",
+            "version": "2.0.0"
+        })
+
+    @staticmethod
+    def map_file_format_to_file_ending(file_format: str) -> str:
         """ Returns the files endings for a given blender output format.
 
         :param file_format: The blender file format.
@@ -389,21 +468,33 @@ class RendererUtility:
             raise Exception("Unknown Image Type " + file_format)
 
     @staticmethod
-    def render(output_dir, file_prefix="rgb_", output_key="colors"):
+    def render(output_dir: Union[str, None] = None, file_prefix: str = "rgb_", output_key: str = "colors",
+               load_keys: Set = None, return_data: bool = True) -> Dict[str, List[np.ndarray]]:
         """ Render all frames.
 
         This will go through all frames from scene.frame_start to scene.frame_end and render each of them.
 
-        :param output_dir: The directory to write images to.
+        :param output_dir: The directory to write files to, if this is None the temporary directory is used. \
+                           The temporary directory is usually in the shared memory (only true for linux).
         :param file_prefix: The prefix to use for writing the images.
         :param output_key: The key to use for registering the output.
+        :param load_keys: Set of output keys to load when available
+        :param return_data: Whether to load and return generated data. Backwards compatibility to config-based pipeline.
+        :return: dict of lists of raw renderer output. Keys can be 'distance', 'colors', 'normals'
         """
+        if output_dir is None:
+            output_dir = Utility.get_temporary_directory()
+        if load_keys is None:
+            load_keys = {'colors', 'distance', 'normals'}
+
         if output_key is not None:
             Utility.add_output_entry({
                 "key": output_key,
-                "path": os.path.join(output_dir, file_prefix) + "%04d" + RendererUtility.map_file_format_to_file_ending(bpy.context.scene.render.image_settings.file_format),
+                "path": os.path.join(output_dir, file_prefix) + "%04d" +
+                        RendererUtility.map_file_format_to_file_ending(bpy.context.scene.render.image_settings.file_format),
                 "version": "2.0.0"
             })
+            load_keys.add(output_key)
 
         bpy.context.scene.render.filepath = os.path.join(output_dir, file_prefix)
 
@@ -418,9 +509,12 @@ class RendererUtility:
             bpy.ops.render.render(animation=True, write_still=True)
             # Revert changes
             bpy.context.scene.frame_end += 1
-
+        
+        return WriterUtility.load_registered_outputs(load_keys) if return_data else {}
+        
     @staticmethod
-    def set_output_format(file_format, color_depth=8, enable_transparency=False, jpg_quality=95):
+    def set_output_format(file_format: str, color_depth: int = 8, enable_transparency: bool = False,
+                          jpg_quality: int = 95):
         """ Sets the output format to use for rendering.
 
         :param file_format: The file format to use, e.q. "PNG", "JPEG" or "OPEN_EXR".
@@ -440,7 +534,8 @@ class RendererUtility:
         bpy.context.scene.render.image_settings.quality = jpg_quality
 
     @staticmethod
-    def enable_motion_blur(motion_blur_length=0.5, rolling_shutter_type="NONE", rolling_shutter_length=0.1):
+    def enable_motion_blur(motion_blur_length: float = 0.5, rolling_shutter_type: str = "NONE",
+                           rolling_shutter_length: float = 0.1):
         """ Enables motion blur and sets rolling shutter.
 
         :param motion_blur_length: Time taken in frames between shutter open and close.
@@ -452,4 +547,3 @@ class RendererUtility:
 
         bpy.context.scene.cycles.rolling_shutter_type = rolling_shutter_type
         bpy.context.scene.cycles.rolling_shutter_duration = rolling_shutter_length
-

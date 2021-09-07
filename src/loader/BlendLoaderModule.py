@@ -1,10 +1,10 @@
 from src.loader.LoaderInterface import LoaderInterface
-from src.utility.Utility import Utility
+from src.utility.EntityUtility import Entity
 from src.utility.loader.BlendLoader import BlendLoader
 
 class BlendLoaderModule(LoaderInterface):
     """
-    This class provides functionality to load entities from a .blend file. A .blend file is a 
+    This class provides functionality to load entities from a .blend file. A .blend file is a
     blender generated  data file that wraps project resources into sections/datablocks. Resources can be
     loaded individually by name pattern matching or entire datablocks to entire project. For more
     information about a datablock see Blender's documentation for bpy.types.ID
@@ -31,7 +31,7 @@ class BlendLoaderModule(LoaderInterface):
 
     **Configuration**:
 
-    .. list-table:: 
+    .. list-table::
         :widths: 25 100 10
         :header-rows: 1
 
@@ -39,7 +39,10 @@ class BlendLoaderModule(LoaderInterface):
           - Description
           - Type
         * - path
-          - Path to a .blend file.
+          - Path to a .blend file. Can not be used with "paths".
+          - string
+        * - paths
+          - A list of paths, each path must point to its own .blend file. Can not be used with "path".
           - string
         * - obj_types
           - The type of objects to load. This parameter is only relevant when `datablocks` is set to `"objects"`. Default: ['mesh', 'empty']
@@ -58,10 +61,26 @@ class BlendLoaderModule(LoaderInterface):
         LoaderInterface.__init__(self, config)
 
     def run(self):
-        newly_loaded_objects = BlendLoader.load(
-            path=self.config.get_string("path"),
-            obj_types=self.config.get_raw_value("obj_types", ['mesh', 'empty']),
-            name_regrex=self.config.get_string("entities") if self.config.has_param("entities") else None,
-            data_blocks=self.config.get_raw_value("datablocks", "objects")
-        )
-        self._set_properties(newly_loaded_objects)
+        if self.config.has_param("paths") and not self.config.has_param("path"):
+            paths = self.config.get_list("paths")
+            newly_loaded_objects = []
+            for path in paths:
+                newly_loaded_objects.extend(BlendLoader.load(
+                    path=path,
+                    obj_types=self.config.get_raw_value("obj_types", ['mesh', 'empty']),
+                    name_regrex=self.config.get_string("entities", None),
+                    data_blocks=self.config.get_raw_value("datablocks", "objects")
+                ))
+        elif self.config.has_param("path"):
+            newly_loaded_objects = BlendLoader.load(
+                path=self.config.get_string("path"),
+                obj_types=self.config.get_raw_value("obj_types", ['mesh', 'empty']),
+                name_regrex=self.config.get_string("entities", None),
+                data_blocks=self.config.get_raw_value("datablocks", "objects")
+            )
+        else:
+            if self.config.has_param("paths") and self.config.has_param("path"):
+                raise Exception("Paths and path can not be used at the same time!")
+            else:
+                raise Exception("You need to specify the path of the .blend file you want to load.")
+        self._set_properties([obj for obj in newly_loaded_objects if isinstance(obj, Entity)])

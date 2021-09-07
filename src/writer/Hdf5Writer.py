@@ -1,3 +1,8 @@
+from src.utility.SetupUtility import SetupUtility
+from src.utility.WriterUtility import WriterUtility
+
+SetupUtility.setup_pip(["h5py"])
+
 import os
 
 import bpy
@@ -35,24 +40,22 @@ class Hdf5Writer(WriterInterface):
           - If true, stereo images are saved as two separate images \*_0 and \*_1. Default: False
             (stereo images are combined into one np.array (2, ...)).
           - bool
-        * - avoid_rendering
-          - If true, exit. Default: False.
-          - bool
     """
 
     def __init__(self, config):
         WriterInterface.__init__(self, config)
-        self._avoid_rendering = config.get_bool("avoid_rendering", False)
+        self._append_to_existing_output = self.config.get_bool("append_to_existing_output", False)
+        self._output_dir = self._determine_output_dir(False)
 
     def run(self):
-        if self._avoid_rendering:
-            print("Avoid rendering is on, no output produced!")
+        if self._avoid_output:
+            print("Avoid output is on, no output produced!")
             return
 
-        if self.config.get_bool("append_to_existing_output", False):
+        if self._append_to_existing_output:
             frame_offset = 0
             # Look for hdf5 file with highest index
-            for path in os.listdir(self._determine_output_dir(False)):
+            for path in os.listdir(self._output_dir):
                 if path.endswith(".hdf5"):
                     index = path[:-len(".hdf5")]
                     if index.isdigit():
@@ -64,7 +67,7 @@ class Hdf5Writer(WriterInterface):
         for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end):
 
             # Create output hdf5 file
-            hdf5_path = os.path.join(self._determine_output_dir(False), str(frame + frame_offset) + ".hdf5")
+            hdf5_path = os.path.join(self._output_dir, str(frame + frame_offset) + ".hdf5")
             with h5py.File(hdf5_path, "w") as f:
 
                 if not GlobalStorage.is_in_storage("output"):
@@ -82,7 +85,7 @@ class Hdf5Writer(WriterInterface):
                     # Check if file exists
                     if not os.path.exists(file_path):
                         # If not try stereo suffixes
-                        path_l, path_r = self._get_stereo_path_pair(file_path)
+                        path_l, path_r = WriterUtility._get_stereo_path_pair(file_path)
                         if not os.path.exists(path_l) or not os.path.exists(path_r):
                             raise Exception("File not found: " + file_path)
                         else:
@@ -91,7 +94,7 @@ class Hdf5Writer(WriterInterface):
                         use_stereo = False
 
                     if use_stereo:
-                        path_l, path_r = self._get_stereo_path_pair(file_path)
+                        path_l, path_r = WriterUtility._get_stereo_path_pair(file_path)
 
                         img_l, new_key, new_version = self._load_and_postprocess(path_l, output_type["key"],
                                                                                    output_type["version"])
@@ -99,45 +102,21 @@ class Hdf5Writer(WriterInterface):
                                                                                    output_type["version"])
 
                         if self.config.get_bool("stereo_separate_keys", False):
-                            self._write_to_hdf_file(f, new_key + "_0", img_l)
-                            self._write_to_hdf_file(f, new_key + "_1", img_r)
+                            WriterUtility._write_to_hdf_file(f, new_key + "_0", img_l)
+                            WriterUtility._write_to_hdf_file(f, new_key + "_1", img_r)
                         else:
                             data = np.array([img_l, img_r])
-                            self._write_to_hdf_file(f, new_key, data)
+                            WriterUtility._write_to_hdf_file(f, new_key, data)
 
                     else:
                         data, new_key, new_version = self._load_and_postprocess(file_path, output_type["key"],
                                                                                 output_type["version"])
 
-                        self._write_to_hdf_file(f, new_key, data)
+                        WriterUtility._write_to_hdf_file(f, new_key, data)
 
-                    self._write_to_hdf_file(f, new_key + "_version", np.string_([new_version]))
+                    WriterUtility._write_to_hdf_file(f, new_key + "_version", np.string_([new_version]))
 
                 blender_proc_version = Utility.get_current_version()
                 if blender_proc_version:
-                    self._write_to_hdf_file(f, "blender_proc_version", np.string_(blender_proc_version))
+                    WriterUtility._write_to_hdf_file(f, "blender_proc_version", np.string_(blender_proc_version))
 
-    def _write_to_hdf_file(self, file, key, data):
-        """ Adds the given data as a new entry to the given hdf5 file.
-
-        :param file: The hdf5 file handle.
-        :param key: The key at which the data should be stored in the hdf5 file. Type: string.
-        :param data: The data to store.
-        """
-        if data.dtype.char == 'S':
-            file.create_dataset(key, data=data, dtype=data.dtype)
-        else:
-            file.create_dataset(key, data=data, compression=self.config.get_string("compression", 'gzip'))
-
-    def _get_stereo_path_pair(self, file_path):
-        """
-        Returns stereoscopic file path pair for a given "normal" image file path.
-
-        :param file_path: The file path of a single image. Type: string.
-        :return: The pair of file paths corresponding to the stereo images,
-        """
-        path_split = file_path.split(".")
-        path_l = "{}_L.{}".format(path_split[0], path_split[1])
-        path_r = "{}_R.{}".format(path_split[0], path_split[1])
-
-        return path_l, path_r

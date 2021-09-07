@@ -1,11 +1,13 @@
 import bpy
 import numpy as np
-from mathutils import Matrix
+from mathutils import Matrix, Vector, Euler
+from typing import Union, Tuple
+
 
 class CameraUtility:
 
     @staticmethod
-    def add_camera_pose(cam2world_matrix, frame=None):
+    def add_camera_pose(cam2world_matrix: Union[np.ndarray, Matrix], frame: Union[int, None] = None):
         """ Sets a new camera pose to a new or existing frame
 
         :param cam2world_matrix: The transformation matrix from camera to world coordinate system
@@ -32,14 +34,18 @@ class CameraUtility:
         return frame
 
     @staticmethod
-    def rotation_from_forward_vec(forward_vec, up_axis='Y'):
+    def rotation_from_forward_vec(forward_vec: Union[np.ndarray, Vector], up_axis: str = 'Y', inplane_rot: float = None) -> np.ndarray:
         """ Returns a camera rotation matrix for the given forward vector and up axis
 
         :param forward_vec: The forward vector which specifies the direction the camera should look.
         :param up_axis: The up axis, usually Y.
+        :param inplane_rot: The inplane rotation in radians. If None is given, the inplane rotation is determined only based on the up vector.
         :return: The corresponding rotation matrix.
         """
-        return forward_vec.to_track_quat('-Z', up_axis).to_matrix()
+        rotation_matrix = Vector(forward_vec).to_track_quat('-Z', up_axis).to_matrix()
+        if inplane_rot is not None:
+            rotation_matrix = rotation_matrix @ Euler((0.0, 0.0, inplane_rot)).to_matrix()
+        return np.array(rotation_matrix)
 
     @staticmethod
     def set_intrinsics_from_blender_params(lens, image_width, image_height, clip_start=0.1, clip_end=1000, pixel_aspect_x=1, pixel_aspect_y=1, shift_x=0, shift_y=0, lens_unit="MILLIMETERS"):
@@ -104,7 +110,7 @@ class CameraUtility:
         cam.stereo.interocular_distance = interocular_distance
 
     @staticmethod
-    def set_intrinsics_from_K_matrix(K, image_width, image_height, clip_start=0.1, clip_end=1000):
+    def set_intrinsics_from_K_matrix(K: Union[np.ndarray, Matrix], image_width: int, image_height: int, clip_start: float = 0.1, clip_end: int = 1000):
         """ Set the camera intrinsics via a K matrix.
 
         The K matrix should have the format:
@@ -120,8 +126,8 @@ class CameraUtility:
         :param clip_start: Clipping start.
         :param clip_end: Clipping end.
         """
-        if not isinstance(K, Matrix):
-            K = Matrix(K)
+
+        K = Matrix(K)
 
         cam_ob = bpy.context.scene.camera
         cam = cam_ob.data
@@ -194,7 +200,7 @@ class CameraUtility:
         return view_fac_in_px
 
     @staticmethod
-    def get_intrinsics_as_K_matrix():
+    def get_intrinsics_as_K_matrix() -> np.ndarray:
         """ Returns the current set intrinsics in the form of a K matrix.
 
         This is basically the inverse of the the set_intrinsics_from_K_matrix() function.
@@ -222,7 +228,67 @@ class CameraUtility:
         cy = (resolution_y_in_px - 1) / 2 + cam.shift_y * view_fac_in_px / pixel_aspect_ratio
 
         # Build K matrix
-        return Matrix(
-            [[fx, 0, cx],
-             [0, fy, cy],
-             [0, 0, 1]])
+        K = np.array([[fx, 0, cx],
+                      [0, fy, cy],
+                      [0, 0, 1]])
+        return K
+
+    @staticmethod
+    def get_fov() -> Tuple[float, float]:
+        """ Returns the horizontal and vertical FOV of the current camera.
+
+        Blender also offers the current FOV as direct attributes of the camera object, however
+        at least the vertical FOV heavily differs from how it would usually be defined.
+
+        :return: The horizontal and vertical FOV in radians.
+        """
+        # Get focal length
+        K = CameraUtility.get_intrinsics_as_K_matrix()
+        # Convert focal length to FOV
+        fov_x = 2 * np.arctan(bpy.context.scene.render.resolution_x / 2 / K[0, 0])
+        fov_y = 2 * np.arctan(bpy.context.scene.render.resolution_y / 2 / K[1, 1])
+        return fov_x, fov_y
+
+    @staticmethod
+    def add_depth_of_field(camera: bpy.types.Camera, focal_point_obj: bpy.types.Object, fstop_value: float,
+                           aperture_blades: int = 0, aperture_rotation: float = 0.0, aperture_ratio: float = 1.0,
+                           focal_distance: float = -1.0):
+        """
+        Adds depth of field to the given camera, the focal point will be set by the focal_point_obj, ideally an empty
+        instance is used for this see `MeshObject.create_empty()` on how to init one of those. A higher fstop value
+        makes the resulting image look sharper, while a low value decreases the sharpness.
+
+        Check the documentation on
+        https://docs.blender.org/manual/en/latest/render/cameras.html#depth-of-field
+
+        :param camera: The camera, which will get a depth of field added
+        :param focal_point_obj: The used focal point, if the object moves the focal point will move with it
+        :param fstop_value: A higher fstop value, will increase the sharpness of the scene
+        :param aperture_blades: Amount of blades used in the camera
+        :param aperture_rotation: Rotation of the blades in the camera in radiant
+        :param aperture_ratio: Ratio of the anamorphic bokeh effect, below 1.0 will give a horizontal one, above one a \
+                               vertical one.
+        :param focal_distance: Sets the distance to the focal point when no focal_point_obj is given.
+        """
+        # activate depth of field rendering for this cameraera
+        camera.dof.use_dof = True
+        if focal_point_obj is not None:
+            # set the focus point of the cameraera
+            camera.dof.focus_object = focal_point_obj
+        elif focal_distance >= 0.0:
+            camera.dof.focus_distance = focal_distance
+        else:
+            raise RuntimeError("Either a focal_point_obj have to be given or the focal_distance has to be higher "
+                               "than zero.")
+        # set the aperture of the camera, lower values make the scene more out of focus, higher values make them look
+        # sharper
+        camera.dof.aperture_fstop = fstop_value
+        # set the amount of blades
+        camera.dof.aperture_blades = aperture_blades
+        # setting the rotation of the aperture in radiant
+        camera.dof.aperture_rotation = aperture_rotation
+        # Change the amount of distortion to simulate the anamorphic bokeh effect. A setting of 1.0 shows no
+        # distortion, where a number below 1.0 will cause a horizontal distortion, and a higher number will
+        # cause a vertical distortion.
+        camera.dof.aperture_ratio = aperture_ratio
+

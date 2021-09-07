@@ -1,8 +1,10 @@
 import os
+from typing import List
 
 import bpy
 
 from src.utility.MaterialLoaderUtility import MaterialLoaderUtility
+from src.utility.MaterialUtility import Material
 from src.utility.Utility import Utility
 
 class CCMaterialLoader:
@@ -10,7 +12,7 @@ class CCMaterialLoader:
     @staticmethod
     def load(folder_path: str = "resources/cctextures", used_assets: list = None, preload: bool = False,
              fill_used_empty_materials: bool = False, add_custom_properties: dict = None,
-             use_all_materials: bool = False):
+             use_all_materials: bool = False) -> List[Material]:
         """ This method loads all textures obtained from https://cc0textures.com, use the script
         (scripts/download_cc_textures.py) to download all the textures to your pc.
 
@@ -26,6 +28,9 @@ class CCMaterialLoader:
         :param add_custom_properties:  A dictionary of materials and the respective properties.
         :param use_all_materials: If this is false only a selection of probably useful textures is used. This excludes \
                                   some see through texture and non tileable texture.
+        :return a list of all loaded materials, if preload is active these materials do not contain any textures yet
+                and have to be filled before rendering (by calling this function again, no need to save the prior
+                returned list)
         """
         folder_path = Utility.resolve_path(folder_path)
         # this selected textures are probably useful for random selection
@@ -39,6 +44,8 @@ class CCMaterialLoader:
                                    "wood chips"]
         if not use_all_materials and used_assets is None:
             used_assets = probably_useful_texture
+        else:
+            used_assets = [asset.lower() for asset in used_assets]
 
         if add_custom_properties is None:
             add_custom_properties = dict()
@@ -47,11 +54,13 @@ class CCMaterialLoader:
             raise Exception("Preload and fill used empty materials can not be done at the same time, check config!")
 
         if os.path.exists(folder_path) and os.path.isdir(folder_path):
+            materials = []
             for asset in os.listdir(folder_path):
                 if used_assets:
                     skip_this_one = True
                     for used_asset in used_assets:
-                        if asset.startswith(used_asset):
+                        # lower is necessary here, as all used assets are made that that way
+                        if asset.lower().startswith(used_asset.replace(" ", "")):
                             skip_this_one = False
                             break
                     if skip_this_one:
@@ -62,18 +71,6 @@ class CCMaterialLoader:
                     if not os.path.exists(base_image_path):
                         continue
 
-                    # if the material was already created it only has to be searched
-                    if fill_used_empty_materials:
-                        new_mat = MaterialLoaderUtility.find_cc_material_by_name(asset, add_custom_properties)
-                    else:
-                        new_mat = MaterialLoaderUtility.create_new_cc_material(asset, add_custom_properties)
-                    if preload:
-                        # if preload then the material is only created but not filled
-                        continue
-                    elif fill_used_empty_materials and not MaterialLoaderUtility.is_material_used(new_mat):
-                        # now only the materials, which have been used should be filled
-                        continue
-
                     # construct all image paths
                     ambient_occlusion_image_path = base_image_path.replace("Color", "AmbientOcclusion")
                     metallic_image_path = base_image_path.replace("Color", "Metalness")
@@ -82,10 +79,32 @@ class CCMaterialLoader:
                     normal_image_path = base_image_path.replace("Color", "Normal")
                     displacement_image_path = base_image_path.replace("Color", "Displacement")
 
+                    # if the material was already created it only has to be searched
+                    if fill_used_empty_materials:
+                        new_mat = MaterialLoaderUtility.find_cc_material_by_name(asset, add_custom_properties)
+                    else:
+                        new_mat = MaterialLoaderUtility.create_new_cc_material(asset, add_custom_properties)
+
+                    # if preload then the material is only created but not filled
+                    if preload:
+                        # Set alpha to 0 if the material has an alpha texture, so it can be detected e.q. in the material getter.
+                        nodes = new_mat.node_tree.nodes
+                        principled_bsdf = Utility.get_the_one_node_with_type(nodes, "BsdfPrincipled")
+                        principled_bsdf.inputs["Alpha"].default_value = 0 if os.path.exists(alpha_image_path) else 1
+                        # add it here for the preload case
+                        materials.append(Material(new_mat))
+                        continue
+                    elif fill_used_empty_materials and not MaterialLoaderUtility.is_material_used(new_mat):
+                        # now only the materials, which have been used should be filled
+                        continue
+
                     # create material based on these image paths
                     CCMaterialLoader.create_material(new_mat, base_image_path, ambient_occlusion_image_path,
                                                      metallic_image_path, roughness_image_path, alpha_image_path,
                                                      normal_image_path, displacement_image_path)
+
+                    materials.append(Material(new_mat))
+            return materials
         else:
             raise Exception("The folder path does not exist: {}".format(folder_path))
 

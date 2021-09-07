@@ -1,19 +1,22 @@
 import csv
 import os
+from typing import List, Tuple, Union, Dict
 
 import bpy
+import mathutils
 import numpy as np
 
-from src.renderer.RendererInterface import RendererInterface
 from src.utility.BlenderUtility import load_image, get_all_blender_mesh_objects
 from src.utility.MaterialLoaderUtility import MaterialLoaderUtility
 from src.utility.RendererUtility import RendererUtility
+from src.utility.WriterUtility import WriterUtility
 from src.utility.Utility import Utility
 
 
 class SegMapRendererUtility:
+
     @staticmethod
-    def _colorize_object(obj, color, use_alpha_channel):
+    def _colorize_object(obj: bpy.types.Object, color: mathutils.Vector, use_alpha_channel: bool):
         """ Adjusts the materials of the given object, s.t. they are ready for rendering the seg map.
 
         This is done by replacing all nodes just with an emission node, which emits the color corresponding to the
@@ -45,8 +48,8 @@ class SegMapRendererUtility:
             obj.data.materials.append(new_mat)
 
     @staticmethod
-    def _set_world_background_color(color):
-        """ Set the background color of the blender world obejct.
+    def _set_world_background_color(color: mathutils.Vector):
+        """ Set the background color of the blender world object.
 
         :param color: A 3-dim array containing the background color in range [0, 255]
         """
@@ -54,7 +57,9 @@ class SegMapRendererUtility:
         nodes.get("Background").inputs['Color'].default_value = color + [1]
 
     @staticmethod
-    def _colorize_objects_for_instance_segmentation(objects, use_alpha_channel, render_colorspace_size_per_dimension):
+    def _colorize_objects_for_instance_segmentation(objects: List[bpy.types.Object], use_alpha_channel: bool,
+                                                    render_colorspace_size_per_dimension: int) \
+            -> Tuple[List[List[int]], int, List[bpy.types.Object]]:
         """ Sets a different color to each object.
 
         :param objects: A list of objects.
@@ -78,20 +83,36 @@ class SegMapRendererUtility:
         return colors, num_splits_per_dimension, color_map
 
     @staticmethod
-    def render(output_dir, temp_dir, used_attributes, used_default_values={}, file_prefix="segmap_", output_key="segmap", segcolormap_output_file_prefix="class_inst_col_map", segcolormap_output_key="segcolormap", use_alpha_channel=False, render_colorspace_size_per_dimension=2048):
-        """ Renders segmentation maps for all frames.
+    def render(output_dir: Union[str, None] = None, temp_dir: Union[str, None] = None, map_by: Union[str, List[str]] = "class",
+               default_values: Union[Dict[str, str]] = {"class":0}, file_prefix: str = "segmap_",
+               output_key: str = "segmap", segcolormap_output_file_prefix: str = "instance_attribute_map_",
+               segcolormap_output_key: str = "segcolormap", use_alpha_channel: bool = False,
+               render_colorspace_size_per_dimension: int = 2048, return_data: bool = True) -> Dict[str, List[np.ndarray]]:
+        """ Renders segmentation maps for all frames
 
         :param output_dir: The directory to write images to.
         :param temp_dir: The directory to write intermediate data to.
-        :param used_attributes: The attributes to be used for color mapping.
-        :param used_default_values: The default values used for the keys used in used_attributes.
+        :param map_by: The attributes to be used for color mapping.
+        :param default_values: The default values used for the keys used in attributes.
         :param file_prefix: The prefix to use for writing the images.
         :param output_key: The key to use for registering the output.
-        :param segcolormap_output_file_prefix: The prefix to use for writing the segmation-color map csv.
-        :param segcolormap_output_key: The key to use for registering the segmation-color map output.
+        :param segcolormap_output_file_prefix: The prefix to use for writing the segmentation-color map csv.
+        :param segcolormap_output_key: The key to use for registering the segmentation-color map output.
         :param use_alpha_channel: If true, the alpha channel stored in .png textures is used.
-        :param render_colorspace_size_per_dimension: As we use float16 for storing the rendering, the interval of integers which can be precisely stored is [-2048, 2048]. As blender does not allow negative values for colors, we use [0, 2048] ** 3 as our color space which allows ~8 billion different colors/objects. This should be enough.
+        :param render_colorspace_size_per_dimension: As we use float16 for storing the rendering, the interval of \
+                                                     integers which can be precisely stored is [-2048, 2048]. As \
+                                                     blender does not allow negative values for colors, we use \
+                                                     [0, 2048] ** 3 as our color space which allows ~8 billion \
+                                                     different colors/objects. This should be enough.
+        :param return_data: Whether to load and return generated data. Backwards compatibility to config-based pipeline.
+        :return: dict of lists of segmaps and (for instance segmentation) segcolormaps
         """
+        
+        if output_dir is None:
+            output_dir = Utility.get_temporary_directory()
+        if temp_dir is None:
+            temp_dir = Utility.get_temporary_directory()
+            
         with Utility.UndoAfterExecution():
             RendererUtility.init()
             RendererUtility.set_samples(1)
@@ -99,10 +120,17 @@ class SegMapRendererUtility:
             RendererUtility.set_denoiser(None)
             RendererUtility.set_light_bounces(1, 0, 0, 1, 0, 8, 0)
 
+            attributes = map_by
+            if 'class' in default_values:
+                default_values['cp_category_id'] = default_values['class']
+                
             # Get objects with meshes (i.e. not lights or cameras)
             objs_with_mats = get_all_blender_mesh_objects()
 
-            colors, num_splits_per_dimension, used_objects = SegMapRendererUtility._colorize_objects_for_instance_segmentation(objs_with_mats, use_alpha_channel, render_colorspace_size_per_dimension)
+            colors, num_splits_per_dimension, objects = \
+                SegMapRendererUtility._colorize_objects_for_instance_segmentation(objs_with_mats,
+                                                                                  use_alpha_channel,
+                                                                                  render_colorspace_size_per_dimension)
 
             bpy.context.scene.cycles.filter_width = 0.0
 
@@ -114,30 +142,30 @@ class SegMapRendererUtility:
             final_segmentation_file_path = os.path.join(output_dir, file_prefix)
 
             RendererUtility.set_output_format("OPEN_EXR", 16)
-            RendererUtility.render(temp_dir, "seg_", None)
+            RendererUtility.render(temp_dir, "seg_", None, return_data=False)
 
             # Find optimal dtype of output based on max index
             for dtype in [np.uint8, np.uint16, np.uint32]:
                 optimal_dtype = dtype
                 if np.iinfo(optimal_dtype).max >= len(colors) - 1:
                     break
+            if default_values is None:
+                default_values = {}
+            elif 'class' in default_values:
+                default_values['cp_category_id'] = default_values['class']
 
-            if 'class' in used_default_values:
-                used_default_values['cp_category_id'] = used_default_values['class']
-
-            if isinstance(used_attributes, str):
+            if isinstance(attributes, str):
                 # only one result is requested
                 result_channels = 1
-                used_attributes = [used_attributes]
-            elif isinstance(used_attributes, list):
-                result_channels = len(used_attributes)
+                attributes = [attributes]
+            elif isinstance(attributes, list):
+                result_channels = len(attributes)
             else:
-                raise Exception("The type of this is not supported here: {}".format(used_attributes))
+                raise Exception("The type of this is not supported here: {}".format(attributes))
 
-            save_in_csv_attributes = {}
             # define them for the avoid rendering case
             there_was_an_instance_rendering = False
-            list_of_used_attributes = []
+            list_of_attributes = []
 
             # Check if stereo is enabled
             if bpy.context.scene.render.use_multiview:
@@ -145,8 +173,11 @@ class SegMapRendererUtility:
             else:
                 suffixes = [""]
 
+            return_dict = {}
+            
             # After rendering
             for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end):  # for each rendered frame
+                save_in_csv_attributes = {}
                 for suffix in suffixes:
                     file_path = temporary_segmentation_file_path + ("%04d" % frame) + suffix + ".exr"
                     segmentation = load_image(file_path)
@@ -157,18 +188,18 @@ class SegMapRendererUtility:
                                                                                      render_colorspace_size_per_dimension)
                     segmap = segmap.astype(optimal_dtype)
 
-                    used_object_ids = np.unique(segmap)
-                    max_id = np.max(used_object_ids)
-                    if max_id >= len(used_objects):
+                    object_ids = np.unique(segmap)
+                    max_id = np.max(object_ids)
+                    if max_id >= len(objects):
                         raise Exception("There are more object colors than there are objects")
                     combined_result_map = []
                     there_was_an_instance_rendering = False
-                    list_of_used_attributes = []
-                    used_channels = []
+                    list_of_attributes = []
+                    channels = []
                     for channel_id in range(result_channels):
                         resulting_map = np.empty((segmap.shape[0], segmap.shape[1]))
                         was_used = False
-                        current_attribute = used_attributes[channel_id]
+                        current_attribute = attributes[channel_id]
                         org_attribute = current_attribute
 
                         # if the class is used the category_id attribute is evaluated
@@ -183,41 +214,41 @@ class SegMapRendererUtility:
                             non_default_value_was_used = True
                         else:
                             if current_attribute != "cp_category_id":
-                                list_of_used_attributes.append(current_attribute)
+                                list_of_attributes.append(current_attribute)
                             # for the current attribute remove cp_ and _csv, if present
-                            used_attribute = current_attribute
-                            if used_attribute.startswith("cp_"):
-                                used_attribute = used_attribute[len("cp_"):]
+                            attribute = current_attribute
+                            if attribute.startswith("cp_"):
+                                attribute = attribute[len("cp_"):]
                             # check if a default value was specified
                             default_value_set = False
-                            if current_attribute in used_default_values or used_attribute in used_default_values:
+                            if current_attribute in default_values or attribute in default_values:
                                 default_value_set = True
-                                if current_attribute in used_default_values:
-                                    default_value = used_default_values[current_attribute]
-                                elif used_attribute in used_default_values:
-                                    default_value = used_default_values[used_attribute]
+                                if current_attribute in default_values:
+                                    default_value = default_values[current_attribute]
+                                elif attribute in default_values:
+                                    default_value = default_values[attribute]
                             last_state_save_in_csv = None
                             # this avoids that for certain attributes only the default value is written
                             non_default_value_was_used = False
                             # iterate over all object ids
-                            for object_id in used_object_ids:
+                            for object_id in object_ids:
                                 is_default_value = False
                                 # get the corresponding object via the id
-                                current_obj = used_objects[object_id]
+                                current_obj = objects[object_id]
                                 # if the current obj has a attribute with that name -> get it
-                                if hasattr(current_obj, used_attribute):
-                                    used_value = getattr(current_obj, used_attribute)
+                                if hasattr(current_obj, attribute):
+                                    value = getattr(current_obj, attribute)
                                 # if the current object has a custom property with that name -> get it
-                                elif current_attribute.startswith("cp_") and used_attribute in current_obj:
-                                    used_value = current_obj[used_attribute]
+                                elif current_attribute.startswith("cp_") and attribute in current_obj:
+                                    value = current_obj[attribute]
                                 elif current_attribute.startswith("cf_"):
                                     if current_attribute == "cf_basename":
-                                        used_value = current_obj.name
-                                        if "." in used_value:
-                                            used_value = used_value[:used_value.rfind(".")]
+                                        value = current_obj.name
+                                        if "." in value:
+                                            value = value[:value.rfind(".")]
                                 elif default_value_set:
                                     # if none of the above applies use the default value
-                                    used_value = default_value
+                                    value = default_value
                                     is_default_value = True
                                 else:
                                     # if the requested current_attribute is not a custom property or a attribute
@@ -225,12 +256,12 @@ class SegMapRendererUtility:
                                     # it throws an exception
                                     raise Exception("The obj: {} does not have the "
                                                     "attribute: {}, striped: {}. Maybe try a default "
-                                                    "value.".format(current_obj.name, current_attribute, used_attribute))
+                                                    "value.".format(current_obj.name, current_attribute, attribute))
 
                                 # check if the value should be saved as an image or in the csv file
                                 save_in_csv = False
                                 try:
-                                    resulting_map[segmap == object_id] = used_value
+                                    resulting_map[segmap == object_id] = value
                                     was_used = True
                                     if not is_default_value:
                                         non_default_value_was_used = True
@@ -248,12 +279,13 @@ class SegMapRendererUtility:
                                 last_state_save_in_csv = save_in_csv
                                 if save_in_csv:
                                     if object_id in save_in_csv_attributes:
-                                        save_in_csv_attributes[object_id][used_attribute] = used_value
+                                        save_in_csv_attributes[object_id][attribute] = value
                                     else:
-                                        save_in_csv_attributes[object_id] = {used_attribute: used_value}
+                                        save_in_csv_attributes[object_id] = {attribute: value}
                         if was_used and non_default_value_was_used:
-                            used_channels.append(org_attribute)
+                            channels.append(org_attribute)
                             combined_result_map.append(resulting_map)
+                            return_dict.setdefault("{}_segmaps{}".format(org_attribute, suffix), []).append(resulting_map)
 
                     fname = final_segmentation_file_path + ("%04d" % frame) + suffix
                     # combine all resulting images to one image
@@ -261,43 +293,51 @@ class SegMapRendererUtility:
                     # remove the unneeded third dimension
                     if resulting_map.shape[2] == 1:
                         resulting_map = resulting_map[:, :, 0]
+                    # TODO: Remove unnecessary save when we give up backwards compatibility
                     np.save(fname, resulting_map)
-
-            if not there_was_an_instance_rendering:
-                if len(list_of_used_attributes) > 0:
-                    raise Exception("There were attributes specified in the may_by, which could not be saved as "
-                                    "there was no \"instance\" may_by key used. This is true for this/these "
-                                    "keys: {}".format(", ".join(list_of_used_attributes)))
-                # if there was no instance rendering no .csv file is generated!
-                # delete all saved infos about .csv
-                save_in_csv_attributes = {}
-
-            # write color mappings to file
-            if save_in_csv_attributes:
-                csv_file_path = os.path.join(output_dir, segcolormap_output_file_prefix + ".csv")
-                with open(csv_file_path, 'w', newline='') as csvfile:
-                    # get from the first element the used field names
-                    fieldnames = ["idx"]
-                    # get all used object element keys
-                    for object_element in save_in_csv_attributes.values():
-                        fieldnames.extend(list(object_element.keys()))
-                        break
-                    for channel_name in used_channels:
-                        fieldnames.append("channel_{}".format(channel_name))
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                    writer.writeheader()
-                    # save for each object all values in one row
-                    for obj_idx, object_element in save_in_csv_attributes.items():
-                        object_element["idx"] = obj_idx
-                        for i, channel_name in enumerate(used_channels):
-                            object_element["channel_{}".format(channel_name)] = i
-                        writer.writerow(object_element)
+                
+                if there_was_an_instance_rendering:
+                    mappings = []
+                    for object_id, attribute_dict in save_in_csv_attributes.items():
+                        mappings.append({"idx" : object_id, **attribute_dict})
+                    return_dict.setdefault("instance_attribute_maps", []).append(mappings)
+                    
+                    # write color mappings to file 
+                    # TODO: Remove unnecessary csv file when we give up backwards compatibility
+                    csv_file_path = os.path.join(output_dir, segcolormap_output_file_prefix + ("%04d.csv" % frame))
+                    with open(csv_file_path, 'w', newline='') as csvfile:
+                        # get from the first element the used field names
+                        fieldnames = ["idx"]
+                        # get all used object element keys
+                        for object_element in save_in_csv_attributes.values():
+                            fieldnames.extend(list(object_element.keys()))
+                            break
+                        for channel_name in channels:
+                            fieldnames.append("channel_{}".format(channel_name))
+                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                        writer.writeheader()
+                        # save for each object all values in one row
+                        for obj_idx, object_element in save_in_csv_attributes.items():
+                            object_element["idx"] = obj_idx
+                            for i, channel_name in enumerate(channels):
+                                object_element["channel_{}".format(channel_name)] = i
+                            writer.writerow(object_element)
+                else:
+                    if len(list_of_attributes) > 0:
+                        raise Exception("There were attributes specified in the may_by, which could not be saved as "
+                                        "there was no \"instance\" may_by key used. This is true for this/these "
+                                        "keys: {}".format(", ".join(list_of_attributes)))
+                    # if there was no instance rendering no .csv file is generated!
+                    # delete all saved infos about .csv
+                    save_in_csv_attributes = {}
 
         Utility.register_output(output_dir, file_prefix, output_key, ".npy", "2.0.0")
+
         if save_in_csv_attributes:
             Utility.register_output(output_dir,
                                     segcolormap_output_file_prefix,
                                     segcolormap_output_key,
                                     ".csv",
-                                    "2.0.0",
-                                    unique_for_camposes=False)
+                                    "2.0.0")
+                
+        return return_dict

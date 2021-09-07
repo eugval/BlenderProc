@@ -1,15 +1,9 @@
-import math
-import os
-
 import addon_utils
 import bpy
-import mathutils
 
-from src.main.GlobalStorage import GlobalStorage
 from src.main.Module import Module
+from src.utility.Config import Config
 from src.utility.RendererUtility import RendererUtility
-from src.utility.BlenderUtility import get_all_blender_mesh_objects
-from src.utility.Utility import Utility
 
 
 class RendererInterface(Module):
@@ -86,10 +80,6 @@ class RendererInterface(Module):
         * - render_distance
           - If true, the distance is also rendered to file. Default: False.
           - bool
-        * - use_mist_distance
-          - If true, the distance is sampled over several iterations, useful for motion blur or soft edges, if this
-            is turned off, only one sample is taken to determine the depth. Default: True.
-          - bool
         * - distance_output_file_prefix
           - The file prefix that should be used when writing distance to file. Default: `"distance_"`
           - string
@@ -107,19 +97,24 @@ class RendererInterface(Module):
           - Type of transition used to fade distance. Default: "Linear". Available: [LINEAR, QUADRATIC,
             INVERSE_QUADRATIC]
           - string
+        * - render_depth
+          - If true, the z-buffer is also rendered to file. Default: False.
+          - bool
+        * - depth_output_file_prefix
+          - The file prefix that should be used when writing depth to file. Default: `"depth_"`
+          - string
+        * - depth_output_key
+          - The key which should be used for storing the depth in a merged file. Default: `"depth"`.
+          - string
         * - use_alpha
           - If true, the alpha channel stored in .png textures is used. Default: False
           - bool
         * - stereo
           - If true, renders a pair of stereoscopic images for each camera position. Default: False
           - bool
-        * - avoid_rendering
-          - This mode is only used during debugging, when all settings should be executed but the actual rendering
-            call is omitted. Default: False
-          - bool
         * - cpu_threads
           - Set number of cpu cores used for rendering (1 thread is always used for coordination if more than one
-            cpu thread means GPU-only rendering). Default: 1
+            cpu thread means GPU-only rendering). When 0 is set, the number of threads will be set automatically. Default: 0
           - int
         * - render_normals
           - If true, the normals are also rendered. Default: False
@@ -130,14 +125,17 @@ class RendererInterface(Module):
         * - normals_output_key
           - The key which is used for storing the normal in a merged file. Default: `"normal"`
           - string
+        * - render_diffuse_color
+          - If true, the diffuse color image are also rendered. Default: False
+          - bool
     """
 
-    def __init__(self, config):
+    def __init__(self, config: Config):
         Module.__init__(self, config)
-        self._avoid_rendering = config.get_bool("avoid_rendering", False)
         addon_utils.enable("render_auto_tile_size")
 
-    def _configure_renderer(self, default_samples=256, use_denoiser=False, default_denoiser="Intel"):
+    def _configure_renderer(self, default_samples: int = 256, use_denoiser: bool = False,
+                            default_denoiser: str = "Intel"):
         """
         Sets many different render parameters which can be adjusted via the config.
 
@@ -159,7 +157,7 @@ class RendererInterface(Module):
 
         # Set number of cpu cores used for rendering (1 thread is always used for coordination => 1
         # cpu thread means GPU-only rendering)
-        RendererUtility.set_cpu_threads(self.config.get_int("cpu_threads", 1))
+        RendererUtility.set_cpu_threads(self.config.get_int("cpu_threads", 0))
         
         print('Resolution: {}, {}'.format(bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y))
 
@@ -179,7 +177,9 @@ class RendererInterface(Module):
 
         self._use_alpha_channel = self.config.get_bool('use_alpha', False)
 
-    def _render(self, default_prefix, default_key, output_key_parameter_name="output_key", output_file_prefix_parameter_name="output_file_prefix", enable_transparency=False, file_format="PNG"):
+    def _render(self, default_prefix: str, default_key: str, output_key_parameter_name: str = "output_key",
+                output_file_prefix_parameter_name: str = "output_file_prefix", enable_transparency: bool = False,
+                file_format: str = "PNG"):
         """ Renders each registered keypoint.
 
         :param default_prefix: The default prefix of the output files.
@@ -189,10 +189,16 @@ class RendererInterface(Module):
                 self._determine_output_dir(),
                 self.config.get_string("distance_output_file_prefix", "distance_"),
                 self.config.get_string("distance_output_key", "distance"),
-                self.config.get_bool("use_mist_distance", True),
                 self.config.get_float("distance_start", 0.1),
                 self.config.get_float("distance_range", 25.0),
                 self.config.get_string("distance_falloff", "LINEAR")
+            )
+
+        if self.config.get_bool("render_depth", False):
+            RendererUtility.enable_depth_output(
+                self._determine_output_dir(),
+                self.config.get_string("depth_output_file_prefix", "depth_"),
+                self.config.get_string("depth_output_key", "depth")
             )
 
         if self.config.get_bool("render_normals", False):
@@ -202,10 +208,18 @@ class RendererInterface(Module):
                 self.config.get_string("normals_output_key", "normals")
             )
 
+        if self.config.get_bool("render_diffuse_color", False):
+            RendererUtility.enable_diffuse_color_output(
+                self._determine_output_dir(),
+                self.config.get_string("diffuse_color_output_file_prefix", "diffuse_"),
+                self.config.get_string("diffuse_color_output_key", "diffuse")
+            )
+
         RendererUtility.set_output_format(file_format, enable_transparency=enable_transparency)
-        if not self._avoid_rendering:
+        if not self._avoid_output:
             RendererUtility.render(
                 self._determine_output_dir(),
                 self.config.get_string(output_file_prefix_parameter_name, default_prefix),
-                self.config.get_string(output_key_parameter_name, default_key)
+                self.config.get_string(output_key_parameter_name, default_key),
+                return_data=False
             )
