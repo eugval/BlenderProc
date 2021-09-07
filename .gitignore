@@ -19,3 +19,7 @@ resources/pix3d
 docs/build/
 !docs/source/index.rst
 docs/source/*rst
+data/
+resources/
+lockfile/
+.gitignore
