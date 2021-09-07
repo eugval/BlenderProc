@@ -14,7 +14,7 @@ for i in range(750):
 
     # os.environ["BLENDER_PROC_RANDOM_SEED"] = str(int(start_time*10000000)+i)
     # os.environ["BLENDER_PROC_RANDOM_SEED"] = str(1232)
-    cmd = ["python", "run.py", "examples/simple_coffee_mugs/config.yaml", "examples/simple_coffee_mugs/output" , "~/Projects/BlenderProc/resources/ModelNet40/", "10"]
+    cmd = ["python", "run.py", "examples/simple_coffee_mugs/config.yaml", "examples/simple_coffee_mugs/test" , "~/Projects/BlenderProc/resources/ModelNet40/", "10"]
     subprocess.check_output(cmd)
 
     print("Done in : {}hrs".format((time.time()-start_time)/3600.))
