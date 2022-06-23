@@ -18,6 +18,10 @@ from src.writer.CameraStateWriter import CameraStateWriter
 from src.main.GlobalStorage import GlobalStorage
 import cv2
 from PIL import Image
+from src.utility.WriterUtility import WriterUtility
+import matplotlib
+import matplotlib.pyplot as plt
+
 
 
 def load_json(path, keys_to_int=False):
@@ -252,7 +256,7 @@ class MyWriter(WriterInterface):
         """ Writes camera.json into dataset_dir.
         """
 
-        cam_K = self._camera_writer._get_attribute(self.cam_pose, 'cam_K')
+        cam_K = WriterUtility.get_cam_attribute(self.cam_pose[1], 'cam_K')
         camera = {'cx': cam_K[0][2],
                   'cy': cam_K[1][2],
                   'depth_scale': self.depth_scale,
@@ -269,7 +273,7 @@ class MyWriter(WriterInterface):
         :return: dict containing info for scene_camera.json
         """
 
-        cam_K = self._camera_writer._get_attribute(self.cam_pose, 'cam_K')
+        cam_K = WriterUtility.get_cam_attribute(self.cam_pose[1], 'cam_K')
 
         frame_camera_dict = {
             'cam_K': cam_K[0] + cam_K[1] + cam_K[2],
@@ -279,7 +283,7 @@ class MyWriter(WriterInterface):
         }
 
         if self._save_world2cam:
-            H_c2w_opencv = Matrix(self._camera_writer._get_attribute(self.cam_pose, 'cam2world_matrix'))
+            H_c2w_opencv = Matrix(WriterUtility.get_cam_attribute(self.cam_pose[1], 'cam2world_matrix', local_frame_change=["X", "-Y", "-Z"]))
 
             H_w2c_opencv = H_c2w_opencv.inverted()
             R_w2c_opencv = H_w2c_opencv.to_quaternion().to_matrix()
@@ -306,7 +310,7 @@ class MyWriter(WriterInterface):
 
             #Make subfolders to chunks
             os.makedirs(os.path.dirname(
-                self.rgb_tpath.format(chunk_id=curr_chunk_id, im_id=0, im_type='PNG'))) # only takes the directory
+                self.rgb_tpath.format(chunk_id=curr_chunk_id, im_id=0, im_type='.png'))) # only takes the directory
             os.makedirs(os.path.dirname(
                 self.depth_tpath.format(chunk_id=curr_chunk_id, im_id=0)))
             os.makedirs(os.path.dirname(
@@ -388,12 +392,12 @@ class MyWriter(WriterInterface):
 
             #### DO SEG MAP ####
             seg_output = Utility.find_registered_output_by_key("segmap")
-            segmap = self._load_file(Utility.resolve_path(seg_output['path'] % frame_id))
+            segmap = WriterUtility.load_output_file(Utility.resolve_path(seg_output['path'] % frame_id))
             segmap_fpath = self.segmentations_tpath.format(chunk_id=curr_chunk_id, im_id=curr_frame_id)
             save_segmap(segmap_fpath,segmap)
             seg_labels = Utility.find_registered_output_by_key("segcolormap")
             seg_labels_fpath = self.segmentations_labels_tpath.format(chunk_id=curr_chunk_id)
-            shutil.copyfile(seg_labels['path'], seg_labels_fpath)
+            shutil.copyfile(seg_labels['path']% frame_id, seg_labels_fpath)
 
             ##### DO Camera posemat ####
             # Get GT annotations and camera info for the current frame.
@@ -436,7 +440,7 @@ class MyWriter(WriterInterface):
         current_cam_posemat = np.linalg.pinv(self.get_posemat_from_rot_transl(chunk_camera[i]['cam_R_w2c'],
                                                                chunk_camera[i]['cam_t_w2c']))
         next_cam_posemat =  np.linalg.pinv(self.get_posemat_from_rot_transl(chunk_camera[j]['cam_R_w2c'], chunk_camera[j]['cam_t_w2c']))
-        cam_intrinsics = np.asarray(self._camera_writer._get_attribute(self.cam_pose, 'cam_K'))
+        cam_intrinsics = np.asarray(WriterUtility.get_cam_attribute(self.cam_pose[1], 'cam_K'))
 
         correspondances_i_to_j, semantics_map_i_to_j = self.get_correspondance_map(cam_intrinsics, current_cam_posemat,
                                                                                    next_cam_posemat, current_d, next_d)

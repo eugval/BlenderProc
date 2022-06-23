@@ -11,8 +11,12 @@ from src.utility.Config import Config
 from src.utility.Utility import Utility
 import numpy as np
 import glob
+import colorsys
+from src.main.GlobalStorage import GlobalStorage
+import copy
 
 from src.utility.MaterialLoaderUtility import MaterialLoaderUtility
+from src.utility.MaterialUtility import Material
 
 class MaterialRandomiser(Module):
     """
@@ -400,49 +404,63 @@ class MaterialRandomiser(Module):
                 # get values to set if they are to be set/sampled anew for each selected entity
                 randomisation_mode = self._choose_randomisations(params_conf)
 
-                if (randomisation_mode["type" ] == "realistic"):
-                    pass
-                elif (randomisation_mode["type"] == "realistic_random"):
-                    pass
-                elif (randomisation_mode["type" ] == "image_random"):
+            if (randomisation_mode["type" ] == "realistic"):
+                pass
+            elif (randomisation_mode["type"] == "realistic_random"):
+                pass
+            elif (randomisation_mode["type" ] == "image_random"):
 
-                    # Maybe also have a displacement image
+                # Maybe also have a displacement image
 
-                    # Set base color
+                # Set base color
+                selected_texture_path = np.random.choice(texture_paths)
+
+                if(params_conf.get_bool('store_reference_texture', False)):
+                    GlobalStorage.set('reference_texture', selected_texture_path)
+
+
+                if (GlobalStorage.is_in_storage('reference_texture') and params_conf.get_float('reference_texture_prob', 0.)>0):
+                    r = np.random.uniform(0,1)
+                    if(r< params_conf.get_float('reference_texture_prob')):
+                        selected_texture_path = GlobalStorage.get('reference_texture')
+
+
+
+
+
+                loaded_texture = self._load_textures({'base_color':selected_texture_path})
+                self._set_textures(loaded_texture,material)
+
+
+                # Set displacement
+                displacement_probability =  params_conf.get_float('displacement_probability', 1.0)
+                r = np.random.uniform(0,1)
+                if (r <displacement_probability):
                     selected_texture_path = np.random.choice(texture_paths)
 
-                    loaded_texture= self._load_textures({'base_color':selected_texture_path})
-                    self._set_textures(loaded_texture,material)
+                    loaded_texture = self._load_textures({'displacement': selected_texture_path})
+                    displacement_multiplier_min = params_conf.get_float('displacement_multiplier_min', 0.001)
+                    displacement_multiplier_max = params_conf.get_float('displacement_multiplier_max',0.01)
 
-
-                    # Set displacement
-                    displacement_probability =  params_conf.get_float('displacement_probability', 1.0)
-                    r = np.random.uniform()
-                    if (r <displacement_probability):
-                        selected_texture_path = np.random.choice(texture_paths)
-
-                        loaded_texture = self._load_textures({'displacement': selected_texture_path})
-                        displacement_multiplier_min = params_conf.get_float('displacement_multiplier_min', 0.001)
-                        displacement_multiplier_max = params_conf.get_float('displacement_multiplier_max',0.01)
-
-                        displacement_multiplier = np.asarray(np.exp(np.random.uniform(np.log(displacement_multiplier_min), np.log(displacement_multiplier_max))))
-                        self._link_specific_color_to_displacement_for_mat(material,loaded_texture['displacement'],displacement_multiplier)
+                    displacement_multiplier = np.asarray(np.exp(np.random.uniform(np.log(displacement_multiplier_min), np.log(displacement_multiplier_max))))
+                    self._link_specific_color_to_displacement_for_mat(material,loaded_texture['displacement'],displacement_multiplier)
 
 
 
-                    # Randomise Keyframes
-                    if not self.config.get_bool('keep_base_color', False):
-                        randomisation_mode['chosen_parameters'].remove('base_color')
+                # Randomise Keyframes
+                if self.config.get_bool('keep_base_color', True):
+                    randomisation_mode['chosen_parameters'].remove('base_color')
 
-                    self._randomise_parameters(material, randomisation_mode['chosen_parameters'], params_conf)
+                self._randomise_parameters(material, randomisation_mode['chosen_parameters'], params_conf)
 
 
 
 
-                elif (randomisation_mode["type"] == "monochrome_random"):
-                    self._randomise_parameters(material, randomisation_mode['chosen_parameters'], params_conf)
-                else:
-                    raise Exception('Not recognised randomisation mode')
+            elif (randomisation_mode["type"] == "monochrome_random"):
+                self._randomise_parameters(material, randomisation_mode['chosen_parameters'], params_conf)
+
+            else:
+                raise Exception('Not recognised randomisation mode')
 
 
 
@@ -454,9 +472,33 @@ class MaterialRandomiser(Module):
             if(p =='base_color'):
                 key = 'base_color'
                 key += '_keyframe' if number_of_samples>1 else ''
+
+                # if(params_conf.get_float('relative_base_color', 0.)>0.):
+                #     colour_change_percent = params_conf.get_float('relative_base_color')
+                #     h_change = np.random.uniform([-1, 1]) * colour_change_percent
+                #     s_change = np.random.uniform([-1, 1]) * colour_change_percent
+                #     v_change = np.random.uniform([-1, 1]) * colour_change_percent
+                #     previous_h, previous_s, previous_v = colorsys.rgb_to_hsv(*self._op_principled_shader_value(material, key, None, "get"))
+                #     new_h, new_s, new_v = previous_h + h_change, previous_s + s_change, previous_v + v_change
+                #     new_rgb = colorsys.hsv_to_rgb(new_h, new_s, new_v)
+                #     value = np.concatenate(new_rgb,[1.])
+                #
+                # else:
+
                 min = params_conf.get_list('base_color_min',[0.,0.,0.,1.] )
                 max = params_conf.get_list('base_color_max',[1.,1.,1.,1.] )
                 value = np.random.uniform(min,max, size=(number_of_samples,4)).squeeze()
+
+
+
+                if (params_conf.get_bool('store_reference_texture', False)):
+                    GlobalStorage.set('reference_colour', value)
+
+                if (GlobalStorage.is_in_storage('reference_colour') and params_conf.get_float('reference_texture_prob', 0.) > 0):
+                    r = np.random.uniform(0,1)
+                    if (r < params_conf.get_float('reference_texture_prob')):
+                        value = GlobalStorage.get('reference_colour')
+
                 self._op_principled_shader_value(material, key, value.tolist(), "set")
             elif(p == 'metallic'):
                 key = 'metallic'
@@ -509,14 +551,14 @@ class MaterialRandomiser(Module):
                 key += '_keyframe' if number_of_samples>1 else ''
                 min = params_conf.get_float('sheen_min', 0.)
                 max = params_conf.get_float('sheen_max', 1.)
-                value = np.random.uniform(min, max, size=(number_of_samples,))
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
                 self._op_principled_shader_value(material, key, value.tolist(), "set")
 
                 key = 'sheen_tint'
                 key += '_keyframe' if number_of_samples>1 else ''
                 min = params_conf.get_float('sheen_tint_min', 0.)
                 max = params_conf.get_float('sheen_tint_max', 1.)
-                value = np.random.uniform(min, max, size=(number_of_samples,))
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
                 self._op_principled_shader_value(material, key, value.tolist(), "set")
 
             elif (p == 'clearcoat'):
@@ -524,14 +566,14 @@ class MaterialRandomiser(Module):
                 key += '_keyframe' if number_of_samples>1 else ''
                 min = params_conf.get_float('clearcoat_min', 0.)
                 max = params_conf.get_float('clearcoat_max', 1.)
-                value = np.random.uniform(min, max, size=(number_of_samples,))
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
                 self._op_principled_shader_value(material, key, value.tolist(), "set")
 
                 key = 'clearcoat_roughness'
                 key += '_keyframe' if number_of_samples>1 else ''
                 min = params_conf.get_float('clearcoat_roughness_min', 0.03)
                 max = params_conf.get_float('clearcoat_roughness_max', 1.)
-                value = np.random.uniform(min, max, size=(number_of_samples,))
+                value = np.random.uniform(min, max, size=(number_of_samples,)).squeeze()
                 self._op_principled_shader_value(material, key, value.tolist(), "set")
             else:
                 raise Exception('wrong parameter name : {}'.format(p))
@@ -550,7 +592,7 @@ class MaterialRandomiser(Module):
 
         chosen_parameters = []
         for key,p in zip(parameters_to_randomise,randomisation_probabilitites):
-            r = np.random.uniform()
+            r = np.random.uniform(0,1)
             if(r<p):
                 chosen_parameters.append(key)
 
@@ -565,7 +607,7 @@ class MaterialRandomiser(Module):
             assert len(type) == len(types), 'Randomisation types have to be the same number as the type probs'
 
             cum_prob = np.cumsum(type)
-            r = np.random.uniform()
+            r = np.random.uniform(0,1)
             sample = np.argmax(cum_prob>r).squeeze()
             type = types[sample]
 

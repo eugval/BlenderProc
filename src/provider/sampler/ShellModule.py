@@ -71,6 +71,7 @@ class ShellModule(Provider):
         elevation_min = self.config.get_float("elevation_min")
         elevation_max = self.config.get_float("elevation_max")
         uniform_elevation = self.config.get_bool("uniform_elevation", False)
+        number_of_samples =  self.config.get_int("number_of_samples",1)
 
         return Shell.sample(
             center=center,
@@ -78,5 +79,6 @@ class ShellModule(Provider):
             radius_max=radius_max,
             elevation_min=elevation_min,
             elevation_max=elevation_max,
-            uniform_elevation=uniform_elevation
+            uniform_elevation=uniform_elevation,
+            number_of_samples = number_of_samples
         )

@@ -11,6 +11,7 @@ from src.utility.MeshObjectUtility import MeshObject
 from src.utility.Utility import Utility
 from src.utility.loader.ObjectLoader import ObjectLoader
 import numpy as np
+from src.Eugene.globals import *
 
 
 class ShapeNetLoader:
@@ -18,7 +19,8 @@ class ShapeNetLoader:
     @staticmethod
 
 
-    def load(data_path: str, used_synset_id: str, used_source_id: str = "", move_object_origin: bool = True, samples = 1, replacement = False,) -> List[MeshObject]:
+    def load(data_path: str, used_synset_id: [str,list] , used_source_id: str = "",  scale :[float,list]  =-1.,
+             move_object_origin: bool = True, samples = 1, replacement = False, random_orientation = True) -> List[MeshObject]:
         """ This loads an object from ShapeNet based on the given synset_id, which specifies the category of objects to use.
 
         From these objects one is randomly sampled and loaded.
@@ -35,23 +37,44 @@ class ShapeNetLoader:
         data_path = Utility.resolve_path(data_path)
         taxonomy_file_path = os.path.join(data_path, "taxonomy.json")
 
-        files_with_fitting_synset = ShapeNetLoader._get_files_with_synset(used_synset_id, used_source_id, taxonomy_file_path, data_path)
+        files_with_fitting_synset = []
+        if (isinstance(used_synset_id,list)):
+            for individual_id in used_synset_id:
+                files_in_category = ShapeNetLoader._get_files_with_synset(individual_id, used_source_id, taxonomy_file_path, data_path)
+                len_files_in_category = len(files_in_category)
+                files_with_fitting_synset += random.sample(files_in_category, k=min(len_files_in_category, 2 * samples))
+        else:
+            files_with_fitting_synset = ShapeNetLoader._get_files_with_synset(used_synset_id, used_source_id, taxonomy_file_path, data_path)
+
         if replacement:
             selected_obj = random.choices(files_with_fitting_synset, k = samples)
         else:
             selected_obj = random.sample(files_with_fitting_synset, k = samples)
 
-        # selected_obj_normalisation_path = json.load(open('/'.join(selected_obj.split('/')[:-1])+'/model_normalized.json'))
         loaded_obj = []
+        loaded_synset_ids = []
         for obj in selected_obj:
             loaded_obj.extend(ObjectLoader.load(obj))
-        #selected_scale = np.random.uniform(0.06, 0.14)
+            loaded_synset_ids.append(obj.split('/')[-4])
 
         for i, obj in enumerate(loaded_obj):
-            #obj.set_scale([selected_scale]*3)
-            obj.set_cp("used_synset_id", used_synset_id)
-            obj.set_cp("category_id", used_synset_id)
+            obj.set_cp("used_synset_id", loaded_synset_ids[i])
+            obj.set_cp("category_id", shapenet_id_dict[loaded_synset_ids[i]])
             obj.set_cp("used_source_id", pathlib.PurePath(selected_obj[i]).parts[-3])
+            obj.set_name( pathlib.PurePath(selected_obj[i]).parts[-3])
+
+            if(isinstance(scale,float)):
+                s_value = scale
+            elif(isinstance(scale, list)):
+                s_value = np.random.uniform(*scale)
+            else:
+                s_value = -1.
+            ShapeNetLoader._set_scale(obj,s_value)
+
+            if(random_orientation):
+                orientation_choice = np.random.choice([-180., -90., 0., 90.,180.], size=(3,)) *np.pi/180.
+                obj.set_rotation_euler(orientation_choice)
+
 
         ShapeNetLoader._correct_materials(loaded_obj)
 
@@ -69,6 +92,21 @@ class ShapeNetLoader:
         bpy.ops.object.select_all(action='DESELECT')
 
         return loaded_obj
+
+    @staticmethod
+    def _set_scale(obj, s_value):
+
+        if(s_value>0):
+            bpy.context.view_layer.objects.active = obj.blender_obj
+            bb = obj.get_bound_box()
+            diagonal = bb[-2] - bb[0]
+            diagonal_length = np.linalg.norm(diagonal)
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.transform.resize(
+                value=[s_value / diagonal_length, s_value / diagonal_length, s_value / diagonal_length])
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+
 
     @staticmethod
     def _get_files_with_synset(used_synset_id: str, used_source_id: str, path_to_taxonomy_file: str, data_path: str) -> list:

@@ -7,11 +7,9 @@
       "h5py",
       "scikit-image",
       "pypng==0.0.20",
-      "scipy==1.2.2",
-      "matplotlib==2.2.4",
+      "scipy",
       "pydevd-pycharm~=193.6911.25",
-      "matplotlib",
-      "opencv-python",
+      "opencv-contrib-python",
     ]
   },
   "modules": [
@@ -35,7 +33,7 @@
         "module": "loader.ModelNetLoader",
         "config": {
           "data_path": "<args:1>",
-          "model_name": "cup_0013", #03797390
+          "model_name": "cup_0013" ,#"cup_0013", #03797390
 #          "category": "cup",
 #          "model_name": "desk_0043", #03797390
 #          "categories": [ "bathtub", "cup", "bookshelf", "bottle",
@@ -43,15 +41,16 @@
 #                         "chair", "cone","flower_pot","glass_box", "plant", "monitor",
 #                         "guitar", "keyboard",
 #                          "lamp","laptop","radio","vase","xbox",], #03797390
-           "scale_path": "./examples/MultiObj/per_category_scale.json",
+#           "scale_path": "./examples/MultiObj/per_category_scale.json",
           "train": True,
+          "manual_scale" : 0.08,
           "samples" : 1,
           "replacement": False,
           "add_properties": {
             "cp_physics": True,
             "cp_manip_object":True,
           },
-          "cf_set_shading": "SMOOTH"
+          "cf_set_shading": "SMOOTH",
         }
       },
 
@@ -158,23 +157,23 @@
           }
         },
         "cf_switch_to_emission_shader": {
-#           "color": [0.5,0.5,1.0,1.0],
-          "color_keyframe": {
-            "provider": "sampler.Color",
-            "min": [0.25, 0.25, 0.25, 1.0],
-            "max": [1.0, 1.0, 1.0, 1.0],
-            "number_of_samples":"<args:2>",
-          },
-#          "strength":1.0,
-          "strength_keyframe":
-             {
-            "provider": "sampler.Value",
-            "type": "float",
-            "mode": "loguniform",
-            "number_of_samples":"<args:2>",
-            "min": 0.1,
-            "max": 20,
-          }
+           "color": [0.5,0.5,0.5,1.0],
+#          "color_keyframe": {
+#            "provider": "sampler.Color",
+#            "min": [0.25, 0.25, 0.25, 1.0],
+#            "max": [1.0, 1.0, 1.0, 1.0],
+#            "number_of_samples":"<args:2>",
+#          },
+          "strength":2.0,
+#          "strength_keyframe":
+#             {
+#            "provider": "sampler.Value",
+#            "type": "float",
+#            "mode": "loguniform",
+#            "number_of_samples":"<args:2>",
+#            "min": 0.1,
+#            "max": 20,
+#          }
         }
       }
     },
@@ -190,7 +189,7 @@
 
 #          First Light
         {
-          "locations": {
+          "locations": {     #  add an s for each frame randomisatio
             "provider": "sampler.Shell",
             "center": {
               "provider": "getter.POI",
@@ -207,30 +206,30 @@
             "radius_max": 2.5, # this one too
             "elevation_min":1,
             "elevation_max":85,
-            "number_of_samples": "<args:2>"
+            "number_of_samples": "<args:2>", # Uncomment if lights are to be randomised every image
           },
 #          "color": [1.0,0.,0.,1.0],
-            "colors":{
+            "colors":{  # Add an s for each frame randomisation
                       "provider": "sampler.Color",
-                      "min": [0.25, 0.25, 0.25, 1.0],
+                      "min": [1.0, 1.0, 1.0, 1.0],
                       "max": [1.0, 1.0, 1.0, 1.0],
-                      "number_of_samples":"<args:2>",
+                      "number_of_samples":"<args:2>",#, Uncomment if lights are to be randomised every image
                     },
           "type": "POINT",
           #          "energy": 50,
-          "energies":
+          "energies": # change to energies for each point randoimsaiton
             {
-              "number_of_samples":"<args:2>",
+              "number_of_samples":"<args:2>", #Uncomment if lights are to be randomised every image
               "provider": "sampler.Value",
               "type": "int",
               "min": 1,
-              "max": 350
+              "max": 200
             },
         },
 
 #        Second Light
         {
-          "locations": {
+          "locations": {  #  add s for each frame randomisatin
             "provider": "sampler.Shell",
             "center": {
               "provider": "getter.POI",
@@ -247,24 +246,24 @@
             "radius_max": 2.5, # this one too
             "elevation_min":1,
             "elevation_max":85,
-            "number_of_samples": "<args:2>"
+            "number_of_samples": "<args:2>", #Uncomment if lights are to be randomised every image
           },
           #          "color": [1.0,0.,0.,1.0],
-          "colors":{
+          "colors":{ #  add s for each frame randomisation
             "provider": "sampler.Color",
-            "min": [0.5, 0.5, 0.5, 1.0],
+            "min": [1.0, 1.0, 1.0, 1.0],
             "max": [1.0, 1.0, 1.0, 1.0],
-            "number_of_samples":"<args:2>",
+            "number_of_samples":"<args:2>",# Uncomment if lights are to be randomised every image
           },
           "type": "POINT",
           #          "energy": 50,
-          "energies":
+          "energies": #  add eneregies for each frame randomisaiton
             {
-              "number_of_samples":"<args:2>",
+              "number_of_samples":"<args:2>", # Uncomment if lights are to be randomised every image
               "provider": "sampler.Value",
               "type": "int",
               "min": 25,
-              "max": 350
+              "max": 200
             },
         }
 
@@ -275,12 +274,8 @@
     },
 
 
-
-
-
-#   Texture randomisation
     {
-      "module": "manipulators.MaterialRandomiser",
+      "module": "manipulators.MaterialManipulator",
       "config": {
         "selector": {
           "provider": "getter.Material",
@@ -288,25 +283,46 @@
             "cf_use_materials_of_objects": {
               "provider": "getter.Entity",
               "conditions": {
-                "type":"MESH",
+                 "cp_manip_object":True,
               }
             }
           }
         },
-        "number_of_samples": "<args:2>",
-        "parameters_to_randomise":["base_color", "roughness", "metallic", "specular", "anisotropic", "sheen", "clearcoat"],
-        "randomisation_probabilities":[1.0, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
-         "metallic_min": 0.5,
-        "anisotropic_min":0.5,
-         "clearcoat_min": 0.5,
-         "clearcoat_roughness_min": 0.5,
-        "sheen_min": 0.5,
-         "keep_base_color":True,
-        "displacement_probability": 0.5,
-        "randomisation_types" : ["monochrome_random"],
-         "randomisation_type_probabilities": [1.0] ,
-        }
-      },
+       "cf_set_base_color": [0.15, 0.5, 0.35, 1],
+      }
+    },
+
+
+
+##   Texture randomisation
+#    {
+#      "module": "manipulators.MaterialRandomiser",
+#      "config": {
+#        "selector": {
+#          "provider": "getter.Material",
+#          "conditions": {
+#            "cf_use_materials_of_objects": {
+#              "provider": "getter.Entity",
+#              "conditions": {
+#                "type":"MESH",
+#              }
+#            }
+#          }
+#        },
+#        "number_of_samples": "<args:2>",
+#        "parameters_to_randomise":["base_color", "roughness", "metallic", "specular", "anisotropic", "sheen", "clearcoat"],
+#        "randomisation_probabilities":[1.0, 0.5, 0.25, 0.25, 0.25, 0.15, 0.05],
+#         "metallic_min": 0.5,
+#        "anisotropic_min":0.5,
+#         "clearcoat_min": 0.5,
+#         "clearcoat_roughness_min": 0.5,
+#        "sheen_min": 0.5,
+#         "keep_base_color":True,
+#        "displacement_probability": 0.5,
+#        "randomisation_types" : ["monochrome_random"],
+#         "randomisation_type_probabilities": [1.0] ,
+#        }
+#      },
 
 
 
@@ -321,7 +337,7 @@
         "cam_poses": [
         {
           "proximity_checks": {
-            "min": 0.2
+            "min": 0.15,
           },
           "excluded_objs_in_proximity_check":  {
             "provider": "getter.Entity",
@@ -332,48 +348,78 @@
           },
           "number_of_samples": "<args:2>", ####CAMERA POSES
           "location": {
-            "provider": "sampler.Shell",
-            "center": {
-              "provider": "getter.POI",
-              "selector": {
-                "provider": "getter.Entity",
-                "conditions": {
-                  "type": "MESH",
-                  "cp_manip_object":True
-                },
-                "random_samples":1
-              }
-            },
-            "radius_min": 0.15,
-            "radius_max":0.45,
-#             "radius_min": 0.45,
-#            "radius_max":0.45,
-#            "elevation_min": 89,
 
-            "elevation_min": 35.0,
-            "elevation_max": 89.9,
-           # "uniform_elevation": True
+                        "provider": "sampler.Uniform3d",
+                        "min": [-0.08,-0.08,0.16], # [-0.08,-0.08,0.14],
+                          "max":[0.08,0.08,0.3], # [0.08,0.08,0.3],
+
+                                        #            "provider": "sampler.Shell",
+                                        #            "center": {
+                                        #              "provider": "getter.POI",
+                                        #              "selector": {
+                                        #                "provider": "getter.Entity",
+                                        #                "conditions": {
+                                        #                  "type": "MESH",
+                                        #                  "cp_manip_object":True
+                                        #                },
+                                        #                "random_samples":1
+                                        #              }
+                                        #            },
+                                        #            "radius_min": 0.15,
+                                        #            "radius_max":0.2,
+                                        ##             "radius_min": 0.45,
+                                        ##            "radius_max":0.45,
+                                        ##            "elevation_min": 89,
+                                        #
+                                        #            "elevation_min": 89.89,
+                                        #            "elevation_max": 89.9,
+                                        #           # "uniform_elevation": True
+
+
+
+
+
+
           },
           "rotation": {
-            "format": "look_at",
             "value": {
-              "provider": "getter.POI",
-              "selector": {
-                "provider": "getter.Entity",
-                "conditions": {
-                  "type": "MESH",
-                  "cp_manip_object":True
-
-                },
-                "random_samples":1
-              }
+              "provider":"sampler.Uniform3d",
+              "max":[0, 0,  6.283185307], #[0, 0, 6.283185307],
+              "min":[0, 0, 0],
             },
-            "extra_rot": {
-              "provider": "sampler.Uniform3d",
-              "max": [0.2618, 0.2618, 0.7854],
-              "min": [-0.2618, -0.2618,-0.7854]
-              }
-          }
+
+                                #            "format": "look_at",
+                                #            "value": {
+                                #              "provider": "getter.POI",
+                                #              "selector": {
+                                #                "provider": "getter.Entity",
+                                #                "conditions": {
+                                #                  "type": "MESH",
+                                #                  "cp_manip_object":True
+                                #
+                                #                },
+                                #                "random_samples":1
+                                #              }
+                                #            },
+                                #            "extra_rot": {
+                                #              "provider": "sampler.Uniform3d",
+                                #              "max": [0.1309, 0.1309, 0.7854], #[0.2618, 0.2618, 0.7854],
+                                #              "min": [-0.1309, -0.1309,-0.7854], # [-0.2618, -0.2618,-0.7854]
+                                #              }
+          },
+
+          "check_fully_visible_objects":{
+            "provider": "getter.Entity",
+            "conditions": {
+                "cp_manip_object":True,
+#              "name":"cup_0013",
+            }
+          },
+
+
+
+
+
         }
         ]
       }
@@ -395,7 +441,7 @@
     {
       "module": "writer.MyWriter",
       "config": {
-        "dataset": "Single_mug_DR_colour_texture_10k",
+        "dataset": "cup_3k",
         "append_to_existing_output": True,
         "postprocessing_modules": {
           "distance": [

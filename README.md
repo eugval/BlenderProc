@@ -1,5 +1,10 @@
 # BlenderProc
 
+## My additions
+In order to run the pycharm debugger, install pydev-pycharm on the pip of the blender installation by running install pydevd-pycharm~=193.6911.25 
+
+Next need to install the off plugin.
+
 [![Documentation](https://img.shields.io/badge/documentation-passing-brightgreen.svg)](https://dlr-rm.github.io/BlenderProc/)
 [![Open In Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DLR-RM/BlenderProc/blob/main/examples/basics/basic/basic_example.ipynb)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)

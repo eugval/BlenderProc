@@ -128,6 +128,7 @@ class ModelNetLoaderModule(LoaderInterface):
         else:
             files = []
             for entry in os.listdir(modelnet_path):
+                entry = os.path.join(modelnet_path , entry)
                 if not os.path.isdir(entry):
                    continue
                 # sample the categories, making sure that the different categories are balanced in their representation
@@ -141,13 +142,13 @@ class ModelNetLoaderModule(LoaderInterface):
                 selected_files = random.sample(files, k=samples)
 
             for file_path in selected_files:
-                category = file_path.split('/')[-1].split('_')[0]
+                category = file_path.split('/')[-3] # Note: changed from before for more robustness in case category name has two words
                 current_objects = ObjectLoader.load(filepath=file_path, cached_objects=cache_objects)
-                current_objects = [obj.set_cp("category_id", category) for obj in current_objects]
+                [obj.set_cp("category_id", category) for obj in current_objects]
                 loaded_objects.extend(current_objects)
 
         if not loaded_objects:
-            raise Exception("No objects have been loaded here, check the config.")
+            print("WARNING: No objects have been loaded here.")
 
         if(self.config.has_param('scale_path')):
             path = Utility.resolve_path(self.config.get_string('scale_path'))
@@ -160,6 +161,8 @@ class ModelNetLoaderModule(LoaderInterface):
             category = obj.get_cp("category_id")
             if(self.config.get_float("manual_scale",0.0)>0.):
                 s_value = self.config.get_float("manual_scale")
+            elif(self.config.get_vector('scale_range',None) is not None):
+                s_value = random.uniform(*self.config.get_vector('scale_range'))
             elif(category_scale_dict is None):
                 s_value = 1.0
             else:
@@ -172,8 +175,9 @@ class ModelNetLoaderModule(LoaderInterface):
             bpy.context.view_layer.objects.active = obj.blender_obj
             bb = obj.get_bound_box()
             diagonal = bb[-2] - bb[0]
+            diagonal_length = np.linalg.norm(diagonal)
             bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.transform.resize(value=[s_value / diagonal.length, s_value / diagonal.length, s_value / diagonal.length])
+            bpy.ops.transform.resize(value=[s_value / diagonal_length, s_value / diagonal_length, s_value / diagonal_length])
             bpy.ops.object.mode_set(mode='OBJECT')
 
             obj.move_origin_to_bottom_mean_point()

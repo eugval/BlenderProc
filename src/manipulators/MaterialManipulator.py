@@ -508,7 +508,7 @@ class MaterialManipulator(Module):
         :param shader_input_key: Name of the shader's input.
         :param value: Value to set.
         """
-        nodes = material.node_tree.nodes
+       # nodes = material.node_tree.nodes
         # principled_bsdf = material.get_the_one_node_with_type(nodes, "BsdfPrincipled")
         principled_bsdf = material.get_the_one_node_with_type("BsdfPrincipled")
         keyframes = False

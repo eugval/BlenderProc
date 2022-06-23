@@ -8,10 +8,12 @@ from mathutils import Matrix
 from src.camera.CameraInterface import CameraInterface
 from src.utility.BlenderUtility import get_all_blender_mesh_objects
 from src.utility.CameraUtility import CameraUtility
+from src.utility.WriterUtility import WriterUtility
 from src.utility.Config import Config
 from src.utility.ItemCollection import ItemCollection
 from src.utility.MeshObjectUtility import MeshObject
 from src.utility.camera.CameraValidation import CameraValidation
+from src.utility.MathUtility import MathUtility
 
 class CameraSampler(CameraInterface):
     """
@@ -204,6 +206,7 @@ class CameraSampler(CameraInterface):
         self.special_objects_weight = config.get_float("special_objects_weight", 2)
         self._above_objects = MeshObject.convert_to_meshes(config.get_list("check_if_pose_above_object_list", []))
         self.check_visible_objects = MeshObject.convert_to_meshes(config.get_list("check_if_objects_visible", []))
+        self.check_fully_visible_objects = MeshObject.convert_to_meshes(config.get_list("check_fully_visible_objects", []))
 
         # Set camera intrinsics
         self._set_cam_intrinsics(cam, Config(self.config.get_raw_dict("intrinsics", {})))
@@ -283,6 +286,21 @@ class CameraSampler(CameraInterface):
         cam2world_matrix = self._cam2world_matrix_from_cam_extrinsics(config)
         return cam2world_matrix
 
+    def cam_from_blender_to_opencv(self,blender_cam_posemat):
+        # R_opencv_to_blender = np.array([[1, 0, 0],
+        #                                 [0, -1, 0],
+        #                                 [0, 0, -1]]) #### I THINK THIS MATRIX IS WRONG
+        #
+        # rot_blender = blender_cam_posemat[:3,:3]
+        # rot_opencv = R_opencv_to_blender @ rot_blender
+        #
+        # new_pose = np.eye(4)
+        # new_pose[:3,:3]=rot_opencv
+        # new_pose[:3,3]= blender_cam_posemat[:3,3]
+        new_pose = MathUtility.change_source_coordinate_frame_of_transformation_matrix(blender_cam_posemat,  ["X", "-Y", "-Z"])
+        return new_pose
+
+
     def _is_pose_valid(self, cam2world_matrix: np.ndarray, existing_poses: List[np.ndarray]) -> bool:
         """ Determines if the given pose is valid.
 
@@ -303,6 +321,38 @@ class CameraSampler(CameraInterface):
             visible_objects = CameraValidation.visible_objects(cam2world_matrix, self.sqrt_number_of_rays)
             for obj in self.check_visible_objects:
                 if obj not in visible_objects:
+                    return False
+
+        if len(self.check_fully_visible_objects) > 0:
+            for obj in self.check_fully_visible_objects:
+                # get bounding box 8x3
+                bb = np.asarray(obj.get_bound_box())
+                bb = np.concatenate([bb, np.ones((bb.shape[0],1))], axis =1)
+
+                # cam_ob = bpy.context.scene.camera
+                camera_pose_in_world =self.cam_from_blender_to_opencv(cam2world_matrix)
+
+
+                # project bounding box in image plane
+                extrinsics =   np.eye(4)
+                extrinsics[:3, :3] = camera_pose_in_world[:3,:3].T
+                extrinsics[:3, 3] = - camera_pose_in_world[:3,:3].T @ np.ascontiguousarray(camera_pose_in_world[:3, 3])
+
+                intrinsics = np.asarray(CameraUtility.get_intrinsics_as_K_matrix())
+
+                cam2_frame_coords = extrinsics.dot(bb.T)
+                cam2_intrinsics = np.concatenate([intrinsics, np.zeros((3, 1))], axis=1)
+                cam2_image_coords = cam2_intrinsics.dot(cam2_frame_coords)
+                cam2_image_coords /= cam2_image_coords[-1, :]
+                cam2_image_coords = cam2_image_coords[:2,:]
+
+                width = bpy.context.scene.render.resolution_x
+                height =  bpy.context.scene.render.resolution_y
+                row0_selection = np.logical_and(cam2_image_coords[0, :] < width, cam2_image_coords[0, :] >= 0)
+                row1_selection = np.logical_and(cam2_image_coords[1, :] < height, cam2_image_coords[1, :] >= 0)
+                row_selection = np.logical_not(np.logical_and(row0_selection, row1_selection))
+
+                if (row_selection.any()):
                     return False
 
         if not CameraValidation.check_novel_pose(cam2world_matrix, existing_poses, self.check_pose_novelty_rot, self.check_pose_novelty_translation, self.min_var_diff_rot, self.min_var_diff_translation):

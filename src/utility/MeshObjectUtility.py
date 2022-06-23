@@ -17,7 +17,11 @@ import mathutils
 
 class MeshObject(Entity):
 
-    def __init__(self, object: bpy.types.Object):
+    def __init__(self, object: Union[bpy.types.Object, str]):
+
+        if(isinstance(object,str)):
+            object = bpy.data.objects[object]
+
         super().__init__(object)
 
     @staticmethod
@@ -181,6 +185,16 @@ class MeshObject(Entity):
         bpy.ops.object.mode_set(mode='OBJECT')
         self.deselect()
         bpy.context.view_layer.update()
+
+    def get_top_mean_point(self):
+        bpy.ops.object.select_all(action='DESELECT')
+        self.select()
+        bpy.context.view_layer.objects.active = self.blender_obj
+        bb = self.get_bound_box()
+        bb_center = np.mean(bb, axis=0)
+        bb_max_z_value = np.max(bb, axis=0)[2]
+        return np.array([bb_center[0], bb_center[1], bb_max_z_value])
+
 
     def get_bound_box(self, local_coords: bool = False) -> np.ndarray:
         """

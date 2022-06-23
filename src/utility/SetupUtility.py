@@ -6,6 +6,8 @@ import subprocess
 import importlib
 from io import BytesIO
 import zipfile
+import sys
+import pydevd_pycharm
 
 class SetupUtility:
 
@@ -25,6 +27,9 @@ class SetupUtility:
         :param reinstall_packages: Set to true, if all python packages should be reinstalled.
         :param debug_args: Can be used to overwrite sys.argv in debug mode.
         """
+        if ('--debug' in sys.argv):
+            pydevd_pycharm.settrace('localhost', port=1234, stdoutToServer=True, stderrToServer=True)
+
         packages_path = SetupUtility.setup_pip(user_required_packages, blender_path, major_version, reinstall_packages)
         sys.path.append(packages_path)
 

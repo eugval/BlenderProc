@@ -1,5 +1,10 @@
 from src.loader.LoaderInterface import LoaderInterface
 from src.utility.loader.ShapeNetLoader import ShapeNetLoader
+from src.Eugene.globals import *
+
+
+
+
 
 
 class ShapeNetLoaderModule(LoaderInterface):
@@ -45,10 +50,31 @@ class ShapeNetLoaderModule(LoaderInterface):
         """
         Uses the loaded .obj files and picks one randomly and loads it
         """
+
+        if self.config.has_param('synset_ids'):
+            synset_id = self.config.get_list('synset_ids')
+        elif(self.config.has_param('synset_id')):
+            synset_id =self.config.get_string("synset_id")
+        else:
+            raise NotImplementedError()
+
+        if self.config.has_param('scale_range'):
+            scale = self.config.get_list('scale_range')
+        elif(self.config.has_param('manual_scale')):
+            scale = self.config.get_float('manual_scale')
+        else:
+            raise NotImplementedError()
+
+
+
         loaded_obj = ShapeNetLoader.load(
             data_path=self.config.get_string("data_path"),
-            used_synset_id=self.config.get_string("used_synset_id"),
+            used_synset_id=synset_id,
+            scale=scale,
             used_source_id=self.config.get_string("used_source_id", ""),
-            move_object_origin=self.config.get_bool("move_object_origin", True)
+            move_object_origin=self.config.get_bool("move_object_origin", True),
+            samples = self.config.get_int('samples',1),
+            replacement= self.config.get_bool('replacement', False),
+            random_orientation=self.config.get_bool('random_orientation', True),
         )
         self._set_properties(loaded_obj)

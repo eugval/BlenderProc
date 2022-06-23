@@ -4,7 +4,7 @@ import bpy
 import sys
 import pydevd_pycharm
 
-#pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
+# pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
 
 # Make sure the current script directory is in PATH, so we can load other python modules
 working_dir = os.path.dirname(bpy.context.space_data.text.filepath) + "/../"
@@ -33,7 +33,7 @@ from src.main.Pipeline import Pipeline
 
 # Replace placeholders manually or use --debug command line argument
 config_path = "examples/simple_coffee_mugs/config.yaml"
-args = [ "examples/simple_coffee_mugs/output" , " resources/ModelNet40/", 1,
+args = [ "examples/simple_coffee_mugs/output_tst" , " resources/ModelNet40/", 1,
         ]  # Put in here arguments to use for filling the placeholders in the config file.
 
 

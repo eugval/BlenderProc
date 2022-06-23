@@ -34,21 +34,25 @@ class CameraUtility:
         return frame
 
     @staticmethod
-    def rotation_from_forward_vec(forward_vec: Union[np.ndarray, Vector], up_axis: str = 'Y', inplane_rot: float = None) -> np.ndarray:
+    def rotation_from_forward_vec(forward_vec: Union[np.ndarray, Vector], up_axis: str = 'Y', inplane_rot: float = None, residual_rot: Union[list,np.ndarray] =None) -> np.ndarray:
         """ Returns a camera rotation matrix for the given forward vector and up axis
 
         :param forward_vec: The forward vector which specifies the direction the camera should look.
         :param up_axis: The up axis, usually Y.
         :param inplane_rot: The inplane rotation in radians. If None is given, the inplane rotation is determined only based on the up vector.
+        :param residual_rot: A residual rotation to apply to the camera. If None, no extra rotation is applied.
         :return: The corresponding rotation matrix.
         """
         rotation_matrix = Vector(forward_vec).to_track_quat('-Z', up_axis).to_matrix()
+
+        if(residual_rot is not None):
+            rotation_matrix = rotation_matrix @ Euler(residual_rot).to_matrix()
         if inplane_rot is not None:
             rotation_matrix = rotation_matrix @ Euler((0.0, 0.0, inplane_rot)).to_matrix()
         return np.array(rotation_matrix)
 
     @staticmethod
-    def set_intrinsics_from_blender_params(lens, image_width, image_height, clip_start=0.1, clip_end=1000, pixel_aspect_x=1, pixel_aspect_y=1, shift_x=0, shift_y=0, lens_unit="MILLIMETERS"):
+    def set_intrinsics_from_blender_params(lens, image_width, image_height, clip_start=0.001, clip_end=1000, pixel_aspect_x=1, pixel_aspect_y=1, shift_x=0, shift_y=0, lens_unit="MILLIMETERS"):
         """ Sets the camera intrinsics using blenders represenation.
 
         :param lens: Either the focal length in millimeters or the FOV in radians, depending on the given lens_unit.

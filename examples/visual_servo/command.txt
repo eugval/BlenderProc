@@ -1,0 +1,1 @@
+python run.py examples/visual_servo/visual_servo_rendering.py

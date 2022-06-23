@@ -241,7 +241,7 @@ class EntityManipulator(Module):
           - Amount to displace geometry. Parameter of displace modifier. Default: 0.1
           - float
         * - cf_add_uv_mapping
-          - Adds a uv map to an object if uv map is missing.
+          - Adds a uv f to an object if uv map is missing.
           - dict
         * - cf_add_uv_mapping/projection
           - Name of the projection as str. Default: []. Available: ["cube", "cylinder", "smart", "sphere"]

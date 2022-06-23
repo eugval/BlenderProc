@@ -33,6 +33,7 @@ parser.add_argument('--keep-temp-dir', dest='keep_temp_dir', action='store_true'
 parser.add_argument('--blender-install-path', dest='blender_install_path', default=None, help="Set path where blender should be installed. If None is given, /home_local/<env:USER>/blender/ is used per default. This argument is ignored if it is specified in the given YAML config.")
 parser.add_argument('--custom-blender-path', dest='custom_blender_path', default=None, help="Set, if you want to use a custom blender installation to run BlenderProc. If None is given, blender is installed into the configured blender_install_path. This argument is ignored if it is specified in the given YAML config.")
 parser.add_argument('--debug', action='store_true', help="If True, the Blender UI will open up and everything will be prepared to run BlenderProc inside. This is great for debugging. The given arguments will be also available inside the blender UI.")
+parser.add_argument('--debug_pycharm', action='store_true', help="If True will use the pycharm debugger")
 parser.add_argument('-h', '--help', dest='help', action='store_true', help='Show this help message and exit.')
 args = parser.parse_args()
 
@@ -215,7 +216,7 @@ if not os.path.exists(temp_dir):
     os.makedirs(temp_dir)
 
 
-if(args.debug):
+if(args.debug_pycharm):
     debug_flag = ['--debug']
 else:
     debug_flag = []

@@ -214,7 +214,7 @@ class RendererUtility:
 
     @staticmethod
     def enable_distance_output(output_dir: Union[str, None] = None, file_prefix: str = "distance_",
-                               output_key: str = "distance", distance_start: float = 0.1, distance_range: float = 25.0,
+                               output_key: str = "distance", distance_start: float = 0.001, distance_range: float = 25.0,
                                distance_falloff: str = "LINEAR"):
         """ Enables writing distance images.
 
@@ -271,7 +271,7 @@ class RendererUtility:
         })
 
     @staticmethod
-    def enable_depth_output(output_dir, file_prefix="depth_", output_key="depth"):
+    def enable_depth_output(output_dir: Union[str, None] = None, file_prefix="depth_", output_key="depth"):
         """ Enables writing depth images.
 
         Depth images will be written in the form of .exr files during the next rendering.
@@ -280,6 +280,9 @@ class RendererUtility:
         :param file_prefix: The prefix to use for writing the files.
         :param output_key: The key to use for registering the depth output.
         """
+        if output_dir is None:
+            output_dir = Utility.get_temporary_directory()
+
         bpy.context.scene.render.use_compositing = True
         bpy.context.scene.use_nodes = True
 

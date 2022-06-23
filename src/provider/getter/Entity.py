@@ -213,6 +213,10 @@ class Entity(Provider):
         :return: List of objects that met the conditional requirement. Type: list.
         """
         conditions = self.config.get_raw_dict('conditions')
+        return self._run_with_external_conditions(conditions)
+
+
+    def _run_with_external_conditions(self,conditions, return_blender_objects = True):
 
         # the list of conditions is treated as or condition
         if not isinstance(conditions, list):
@@ -241,7 +245,8 @@ class Entity(Provider):
             raise Exception(f"There were no objects selected with the following "
                             f"condition: \n{self._get_conditions_as_string()}")
 
-        # Map back to blender objects for now (TODO: Remove in the future)
-        filtered_objects = [filtered_object.blender_obj for filtered_object in filtered_objects]
+        if(return_blender_objects):
+            # Map back to blender objects for now (TODO: Remove in the future)
+            filtered_objects = [filtered_object.blender_obj for filtered_object in filtered_objects]
 
         return filtered_objects

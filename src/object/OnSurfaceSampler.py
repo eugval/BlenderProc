@@ -1,9 +1,12 @@
 import bpy
 import mathutils
-
+from src.utility.filter.Filter import Filter
+from src.utility.MeshObjectUtility import MeshObject
+from mathutils import Matrix, Vector, Euler
 from src.main.Module import Module
 from src.utility.BlenderUtility import check_intersection, check_bb_intersection, get_bounds
-
+from src.Eugene import se3_tools as se3
+import numpy as np
 
 class OnSurfaceSampler(Module):
     """ Samples objects poses on a surface.
@@ -59,7 +62,9 @@ class OnSurfaceSampler(Module):
         self.min_distance = config.get_float("min_distance", 0.25)
         self.max_distance = config.get_float("max_distance", 0.6)
 
-        self.placed_objects = []
+        manip_object = Filter.one_by_cp(elements= MeshObject.convert_to_meshes(bpy.data.objects) ,cp_name='manip_object',value=True)
+
+        self.placed_objects = [manip_object.blender_obj]#  [manip_object.blender_obj] #[ manip_object]
         self.surface = None
         self.surface_height = None
 
@@ -160,9 +165,13 @@ class OnSurfaceSampler(Module):
                 for i in range(max_tries):
                     position = self.config.get_vector3d("pos_sampler")
                     rotation = self.config.get_vector3d("rot_sampler")
+                    #
+                    # obj.location = position
+                    # obj.rotation_euler = rotation
 
-                    obj.location = position
-                    obj.rotation_euler = rotation
+                    rot = se3.euler2rot('XYZ', np.array(rotation))
+                    matrix_world =se3.make_pose(np.array(position), rot)
+                    obj.matrix_world = Matrix(matrix_world)
 
                     if not self.check_collision_free(obj):
                         print("Collision detected, retrying!")
